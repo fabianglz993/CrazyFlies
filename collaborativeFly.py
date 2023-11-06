@@ -8,29 +8,38 @@
 
 ##################################################################################################################################################
 
+
+'''
+Librerias
+'''
 import math
 import time
-
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
-
 import matplotlib.pyplot as plt
 import numpy as np
 
+'''
+Variables globales
+'''
 # URI de los drones a los que se van a conectar
 uri1 = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E701')
-
 uri2 = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E702')
 
 
-
-
-#función para hacer el calculo de la estimacion una vez se reinicia
-def wait_for_position_estimator(scf):
+'''
+Funciones
+'''
+def wait_for_position_estimator(scf):    
+     '''
+    Hace el calculo de la estimacion del dron una vez se reinicia
+        Parameters:
+            scf (): 
+    '''
     print('Waiting for estimator to find position...')
 
     log_config = LogConfig(name='Kalman Variance', period_in_ms=500)
@@ -62,17 +71,20 @@ def wait_for_position_estimator(scf):
             min_z = min(var_z_history)
             max_z = max(var_z_history)
 
-            # print("{} {} {}".
-            #       format(max_x - min_x, max_y - min_y, max_z - min_z))
-
-            if (max_x - min_x) < threshold and (
-                    max_y - min_y) < threshold and (
-                    max_z - min_z) < threshold:
+            if (max_x - min_x) < threshold and (max_y - min_y) < threshold and (max_z - min_z) < threshold:
                 break
 
-
-#funcion para establecer la posicion inicial del dron y hacer estimaciones correctas
 def set_initial_position(scf, x, y, z, yaw_deg):
+     '''
+    Establece la posición inicial del dron y hace las estimaciones correctas
+
+            Parameters:
+                    scf (): 
+                    x (float): Posición inicial en el eje x del dron
+                    y (float): Posición inicial en el eje y del dron
+                    z (float): Posición inicial en el eje z del dron
+                    yaw_deg (int): Another decimal integer
+    '''
     scf.cf.param.set_value('kalman.initialX', x)
     scf.cf.param.set_value('kalman.initialY', y)
     scf.cf.param.set_value('kalman.initialZ', z)
