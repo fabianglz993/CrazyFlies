@@ -36,7 +36,8 @@ sequence = [
 ##################################Funcion para implementar el filtro de kalman##########################################################
 def wait_for_position_estimator(scf):
     print('Waiting for estimator to find position...')
-
+    
+    # Set a threshold for the difference between maximum and minimum variance values.
     log_config = LogConfig(name='Kalman Variance', period_in_ms=500)
     log_config.add_variable('kalman.varPX', 'float')
     log_config.add_variable('kalman.varPY', 'float')
@@ -51,14 +52,14 @@ def wait_for_position_estimator(scf):
     with SyncLogger(scf, log_config) as logger:
         for log_entry in logger:
             data = log_entry[1]
-
+            # Update the variance history lists.
             var_x_history.append(data['kalman.varPX'])
             var_x_history.pop(0)
             var_y_history.append(data['kalman.varPY'])
             var_y_history.pop(0)
             var_z_history.append(data['kalman.varPZ'])
             var_z_history.pop(0)
-
+            # Calculate the minimum and maximum variance values for each axis.
             min_x = min(var_x_history)
             max_x = max(var_x_history)
             min_y = min(var_y_history)
@@ -66,12 +67,15 @@ def wait_for_position_estimator(scf):
             min_z = min(var_z_history)
             max_z = max(var_z_history)
 
+            # Uncomment the following line if you want to print the differences between max and min values.
             # print("{} {} {}".
             #       format(max_x - min_x, max_y - min_y, max_z - min_z))
 
+            # Check if the differences between max and min values for all axes are below the threshold.
             if (max_x - min_x) < threshold and (
                     max_y - min_y) < threshold and (
                     max_z - min_z) < threshold:
+                    # If the condition is met, exit the loop and finish waiting for the position estimator.
                 break
 
 ###############Funcion que recibe las posiciones iniciales del dron  y utiliza el filtro del Kalman#######################################################################
