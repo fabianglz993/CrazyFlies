@@ -214,6 +214,7 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
     x_deseado = base_x
     y_deseado = base_y
     z_deseado = 1.0
+    #             Center                   Upper left corner            Center             Landing Center
     points = [[base_x, base_y, 1], [base_x + 0.7, base_y + 0.7, 1], [base_x, base_y, 1], [base_x, base_y, 0.1]]
     
     # Define an error tolerance for the position control.
