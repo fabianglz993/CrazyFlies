@@ -5,7 +5,6 @@
 # Descripción: Código para mantener un vuelo de un dron, en una altura de 1 metro y una X y Y fijas
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Angel Sanchez 
-# Correciones de comentarios por: Natalia Rodríguez González
 
 #Código basado en https://github.com/bitcraze/crazyflie-lib-python/blob/master/examples/positioning/initial_position.py
 #  Copyright (C) 2019 Bitcraze AB
