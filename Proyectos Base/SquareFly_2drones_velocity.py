@@ -5,7 +5,7 @@
 # Descripción: Script para secuencia de cuadrados con 2 drones
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: David Padilla
-# Correciones de comentarios por: Natalia Rodríguez González
+
 
 #  Copyright (C) 2019 Bitcraze AB
 
