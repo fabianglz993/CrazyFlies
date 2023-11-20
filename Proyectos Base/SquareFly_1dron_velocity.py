@@ -7,7 +7,7 @@
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Misael Cruz
 # Correciones de comentarios por: Natalia Rodríguez González
-# Correciones de comentarios por: Natalia Rodríguez González
+
 
 ##################################################################################################################################################
 
