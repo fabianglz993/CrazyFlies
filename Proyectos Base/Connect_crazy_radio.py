@@ -5,7 +5,7 @@
 # Descripción: Código para conectar y verificar la conexión del dorn con el CrazyRadio
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Carlos Flores 
-# Actualizacion de comentarios por: Natalia Rodríguez González
+
 
 ##################################################################################################################################################
 
