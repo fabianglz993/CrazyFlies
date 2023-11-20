@@ -218,7 +218,7 @@ def wait_for_position_estimator(scf):
                     # If the condition is met, exit the loop and finish waiting for the position estimator.
                 break
 
-###############Function that recives the initial positions of the dron and uses the kalman filter#######################################################################
+###############Function that recives the initial positions of the dron and uses the kalman filter####################################
 def set_initial_position(scf, x, y, z, yaw_deg):
     scf.cf.param.set_value('kalman.initialX', x)
     scf.cf.param.set_value('kalman.initialY', y)
