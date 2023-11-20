@@ -30,6 +30,7 @@ X1 = 0
 Y1 = 0
 Z1 = 0
 
+#Global variables to obtain the speeds.
 VX1 = 0
 VY1 = 0
 VZ1 = 0
