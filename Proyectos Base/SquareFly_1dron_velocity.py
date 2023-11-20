@@ -7,6 +7,7 @@
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Misael Cruz
 # Correciones de comentarios por: Natalia Rodríguez González
+# Correciones de comentarios por: Natalia Rodríguez González
 
 ##################################################################################################################################################
 
@@ -313,7 +314,7 @@ if __name__ == '__main__':
     # 180: negative X direction
     # 270: negative Y direction
 
-    ##############################################3Position variables and angles###############################
+    ##############################################Position variables and angles###############################
     # With this command we call to the variables of the drone that we want to read. The name of the variable is
     #obtained from the CFClient
     # Note: You cannot add more than 6 variables to measure for each lg_stb
