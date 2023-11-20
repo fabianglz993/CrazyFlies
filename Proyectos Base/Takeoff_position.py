@@ -7,11 +7,12 @@
 #   sin movimientos en (x,y)
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Misael Cruz
+# Correciones de comentarios por: Natalia Rodríguez González
 
 ##################################################################################################################################################
 #  Copyright (C) 2019 Bitcraze AB
 
-
+#Import libraries
 '''
 Librerias
 '''
@@ -29,8 +30,8 @@ sequence = [(0, 0, 1),
             (0, 0, 1),     
             (0, 0, 1),     
             (0, 0, 0.2),
-           ] #Secuencia para mantener la altura a 1 metro dependiendo de dónde inicie el dron, descritos en formato (x,y,z)
-             #La secuencia (0, 0, 1) Mantiene la altura mientras que la secuencia (0,0,0.2) baja a una zona segura
+           ] #Sequence to maintain the height at 1 meter depending on where the drone starts, described in (x,y,z) format
+             #The sequence (0, 0, 1) maintains the height while the sequence (0,0,0.2) descends to a safe zone
 
 ''' 
 Funciones
@@ -51,7 +52,7 @@ def run_sequence(scf, _sequence, _initial_x, _initial_y, _initial_z, yaw):
         y = position[1] + _initial_y
         z = position[2] + _initial_z
         for i in range(50):
-            cf.commander.send_position_setpoint(x, y, z, yaw) #Manda el comando con la posición (x,y,z) y ángulo (yaw) que debe tener el dron
+            cf.commander.send_position_setpoint(x, y, z, yaw) #Sends the command with the position (x,y,z) and angle (yaw) that the drone must have
             time.sleep(0.1)
     cf.commander.send_stop_setpoint()
     time.sleep(0.1)
@@ -62,12 +63,12 @@ Main
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
     
-    # Valores de posición inicial dependiendo de dónde se coloca el dron en metros
+    # Initial position values ​​depending on where the drone is placed in meters
     initial_x = 1.5
     initial_y = 3.15
     initial_z = 0.0   
-    initial_yaw = 90  # En grados
+    initial_yaw = 90  # In Degrees
 
-#Se inicia la comunicación con el dron y se ejecuta la función de posicionamiento
+#Communication with the drone begins and the positioning function is executed
 with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
     run_sequence(scf, sequence, initial_x, initial_y, initial_z, initial_yaw)
