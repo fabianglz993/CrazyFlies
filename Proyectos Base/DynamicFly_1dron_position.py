@@ -5,16 +5,17 @@
 # Descripción: Código para mandar el dron a una coordenada (x,y) y mantenerse a una altura de 1 metro 
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Adrian Lara Guzman
+# Correciones de comentarios por: Natalia Rodríguez González
 
 #Código basado en https://github.com/bitcraze/crazyflie-lib-python/blob/master/examples/positioning/initial_position.py
 #  Copyright (C) 2019 Bitcraze AB
 
 #################################################################################################################
-
-
+#Import standar libraries
 import math
 import time
 
+#Import libraries to communicate with Crazyflie
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
@@ -28,27 +29,29 @@ uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E701')
 # Change the sequence according to your setup
 #             x    y    z
 sequence = [
-    (0, 0, 1), #Centro
-    (0.3, -0.3, 1) #cooredenaa del punto
-    
+    (0, 0, 1), #Center
+    (0.3, -0.3, 1) #Point coordinates
 ]
 
-##################################Funcion para implementar el filtro de kalman##########################################################
+##################################Function to implement tha Kalman filter##########################################################
 def wait_for_position_estimator(scf):
     print('Waiting for estimator to find position...')
     
-    # Set a threshold for the difference between maximum and minimum variance values.
+    # Configure logging for the Kalman filter variance
     log_config = LogConfig(name='Kalman Variance', period_in_ms=500)
     log_config.add_variable('kalman.varPX', 'float')
     log_config.add_variable('kalman.varPY', 'float')
     log_config.add_variable('kalman.varPZ', 'float')
 
+    # Initialize history lists for variance values for X, Y, and Z axes.
     var_y_history = [1000] * 10
     var_x_history = [1000] * 10
     var_z_history = [1000] * 10
 
+    # Set a threshold for the difference between maximum and minimum variance values.
     threshold = 0.001
 
+    # Use a SyncLogger to capture logging data from the Crazyflie.
     with SyncLogger(scf, log_config) as logger:
         for log_entry in logger:
             data = log_entry[1]
@@ -78,7 +81,7 @@ def wait_for_position_estimator(scf):
                     # If the condition is met, exit the loop and finish waiting for the position estimator.
                 break
 
-###############Funcion que recibe las posiciones iniciales del dron  y utiliza el filtro del Kalman#######################################################################
+###############Function that receives the initial positions of the drone and uses the Kalman filter########################################
 def set_initial_position(scf, x, y, z, yaw_deg):
     scf.cf.param.set_value('kalman.initialX', x)
     scf.cf.param.set_value('kalman.initialY', y)
@@ -87,17 +90,17 @@ def set_initial_position(scf, x, y, z, yaw_deg):
     yaw_radians = math.radians(yaw_deg)
     scf.cf.param.set_value('kalman.initialYaw', yaw_radians)
 
-###################Funcion que se reinicia los valores anteriores almacenados en el filtro de kalman#######################################
+###################Function that resets the previous values ​​stored in the Kalman filter#######################################
 def reset_estimator(scf):
     cf = scf.cf
     cf.param.set_value('kalman.resetEstimation', '1')
     time.sleep(0.1)
     cf.param.set_value('kalman.resetEstimation', '0')
 
-    #se llama a la siguiente funcion
+    #Calls the next function
     wait_for_position_estimator(cf)
 
-#################Funcion que manda llamar la sequencia de puntos que debe seguir el dron##################################################
+#################Function that calls the sequence of point that the drone has to follow##################################################
 def run_sequence(scf, sequence, base_x, base_y, base_z, yaw):
     cf = scf.cf
 
@@ -113,16 +116,14 @@ def run_sequence(scf, sequence, base_x, base_y, base_z, yaw):
             time.sleep(0.1)
 
     cf.commander.send_stop_setpoint()
-    # Make sure that the last packet leaves before the link is closed
-    # since the message queue is not flushed before closing
+    # Make sure that the last packet leaves before the link is closed since the message queue is not flushed before closing
     time.sleep(0.1)
 
 
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
 
-    # Set these to the position and yaw based on how your Crazyflie is placed
-    # on the floor
+    # Set these to the position and yaw based on how your Crazyflie is placed on the floor
     initial_x = 2.4
     initial_y = 3.15
     initial_z = 0.0
@@ -132,7 +133,7 @@ if __name__ == '__main__':
     # 180: negative X direction
     # 270: negative Y direction
 
-    #####################conexion al dron####################################################
+    #####################Connect to the drone####################################################
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
 
         set_initial_position(scf, initial_x, initial_y, initial_z, initial_yaw)
