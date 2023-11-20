@@ -5,7 +5,7 @@
 # Descripción: Código para almacenar los datos del dron mediante la configuración de los LOGS
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Cristóbal Padilla
-# Actualizacion de comentarios por: Natalia Rodríguez González
+
 ##################################################################################################################################################
 
 #Import standar libraries
