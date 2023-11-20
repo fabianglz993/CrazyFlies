@@ -31,6 +31,7 @@ FINAL_ARRAY = []
 
 ####################CALLBACKS for each configuration###################################################
 
+########################Position############################
 def pos_angCallback(timestamp, data, logconf):
     print('[%d][%s]: %s' % (timestamp, logconf.name, data))
     global FINAL_ARRAY
@@ -39,7 +40,7 @@ def pos_angCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
    
-
+########################Speed############################
 def velCallback(timestamp, data, logconf):
     print('[%d][%s]: %s' % (timestamp, logconf.name, data))
     global FINAL_ARRAY
@@ -48,6 +49,7 @@ def velCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
+########################Quaternions############################
 def quaternionCallback(timestamp, data, logconf):
     print('[%d][%s]: %s' % (timestamp, logconf.name, data))
     global FINAL_ARRAY
@@ -56,6 +58,7 @@ def quaternionCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
+########################Angles Rates############################
 def anglesRatesCallback(timestamp, data, logconf):
     print('[%d][%s]: %s' % (timestamp, logconf.name, data))
     global FINAL_ARRAY
