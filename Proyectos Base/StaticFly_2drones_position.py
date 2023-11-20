@@ -5,8 +5,6 @@
 # Descripción: Código para volar 2 drones en modo estático, el LPS debe estar en TDoA2
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Angel Sanchez
-# Correciones de comentarios por: Natalia Rodríguez González
-
 ##################################################################################################################################################
 #Import standar libraries
 import math
