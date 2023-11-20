@@ -6,7 +6,7 @@
 # para las señales recibidas del sistema Loco para la estimación de la posición realizando un control mediante velocidades
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Misael Cruz
-# Correciones de comentarios por: Natalia Rodríguez González
+
 
 
 ##################################################################################################################################################
