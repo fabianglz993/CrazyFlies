@@ -5,30 +5,27 @@
 # Descripción: Código para mantener un vuelo de un dron, en una altura de 1 metro y una X y Y fijas con control de velocidades
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Angel Sanchez 
+# Correciones de comentarios por: Natalia Rodríguez González
 
 #  Copyright (C) 2019 Bitcraze AB
 
 #################################################################################################################
-
-
+#Import standar libraries
 import math
 import time
+import keyboard as kb
+import threading
+import pandas
 
+#Import libraries to communicate with Crazyflie
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
-import keyboard as kb
-import threading
 
-
-
-import pandas
-
-
-#Variables globales para saber la posicion drone 1
+#Global variables to obtain the position of drone number 1.
 X1 = 0
 Y1 = 0
 Z1 = 0
@@ -37,7 +34,7 @@ VX1 = 0
 VY1 = 0
 VZ1 = 0
 
-#Variables globales para saber la posicion drone 2
+#Global variables to obtain the position of drone number 2.
 X2 = 0
 Y2 = 0
 Z2 = 0
@@ -53,10 +50,13 @@ uri2 = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E702')
 # Change the sequence according to your setup
 #             x    y    z
 
-
+#Arrays where the recolected data will be stored while the code is running.
 FINAL_ARRAY = []
 FINAL_ARRAY2 = []
 
+#############Drone 1 callbacks###################
+
+###Postition Callback####
 def pos_angCallback(timestamp, data, logconf):
     #Esta funcion nos permite obtener el angulo (yaw) para poder hacer los logs
     #print('[%d][%s]: %s' % (timestamp, logconf.name, data))
@@ -75,7 +75,7 @@ def pos_angCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
    
-
+###Speed Callback####
 def velCallback(timestamp, data, logconf):
     #Esta funcion nos permite obtener las velocidades para poder hacer los logs
     #print('[%d][%s]: %s' % (timestamp, logconf.name, data))
@@ -93,6 +93,7 @@ def velCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
+###Quaternion Callback####
 def quaternionCallback(timestamp, data, logconf):
     #Esta funcion nos permite obtener los quaterniones para poder hacer los logs
     #print('[%d][%s]: %s' % (timestamp, logconf.name, data))
@@ -102,6 +103,7 @@ def quaternionCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
+##Angles Rate Callback####
 def anglesRatesCallback(timestamp, data, logconf):
     #Esta funcion nos permite obtener las AR para poder hacer los logs
 
@@ -112,8 +114,9 @@ def anglesRatesCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
-#############drone 2 callbacks###################
+#############Drone 2 callbacks###################
 
+###Postition Callback####
 def pos_angCallback2(timestamp, data, logconf):
     #Esta funcion nos permite obtener la posicion angular del dron 2 para poder hacer los logs
     #print('[%d][%s]: %s' % (timestamp, logconf.name, data))
@@ -131,7 +134,7 @@ def pos_angCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
    
-
+###Speed Callback####
 def velCallback2(timestamp, data, logconf):
     #Esta funcion nos permite obtener las velocidades del dron 2 para poder hacer los logs
     #print('[%d][%s]: %s' % (timestamp, logconf.name, data))
@@ -148,7 +151,8 @@ def velCallback2(timestamp, data, logconf):
     VZ2 = data['stateEstimate.vz']
 
     FINAL_ARRAY2.append(dic_temp)
-
+    
+###Quaternion Callback####
 def quaternionCallback2(timestamp, data, logconf):
     #Esta funcion nos permite obtener los quaterniones del dron 2 para poder hacer los logs
     #print('[%d][%s]: %s' % (timestamp, logconf.name, data))
@@ -158,6 +162,7 @@ def quaternionCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
 
+##Angles Rate Callback####
 def anglesRatesCallback2(timestamp, data, logconf):
     #Esta funcion nos permite obtener los AR del dron 2 para poder hacer los logs
     #print('[%d][%s]: %s' % (timestamp, logconf.name, data))
@@ -167,7 +172,7 @@ def anglesRatesCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
 
-###########################################
+######################Kalman Filter##########################################################
 
 def wait_for_position_estimator(scf):
     #Filtro predictor
@@ -210,7 +215,7 @@ def wait_for_position_estimator(scf):
                     max_z - min_z) < threshold:
                 break
 
-
+###############Function that recives the initial positions of the dron and uses the kalman filter############
 def set_initial_position(scf, x, y, z, yaw_deg):
     scf.cf.param.set_value('kalman.initialX', x)
     scf.cf.param.set_value('kalman.initialY', y)
@@ -219,7 +224,7 @@ def set_initial_position(scf, x, y, z, yaw_deg):
     yaw_radians = math.radians(yaw_deg)
     scf.cf.param.set_value('kalman.initialYaw', yaw_radians)
 
-
+###################Function that restarts the values previously stored in the Kalman filter##################
 def reset_estimator(scf):
     cf = scf.cf
     cf.param.set_value('kalman.resetEstimation', '1')
@@ -228,7 +233,7 @@ def reset_estimator(scf):
 
     wait_for_position_estimator(cf)
 
-
+#################Function that calls the sequence of the points that the drone 1 has to follow#############################
 def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel, logconf_quat, logconf_angles_rates):
     cf = scf.cf
     #Logs 
@@ -255,7 +260,7 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
     global VX1
     global VY1
     global VZ1
-    #Ganancias para el controlador de la velocidad
+    #Define proportional and derivative gains for the PD controller
     kpx = 1.0
     kdx = 0.16
 
@@ -268,15 +273,16 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
     x_deseado = base_x
     y_deseado = base_y
     z_deseado = 1.0
-            #centro                 ezquina superior izq                ezquina superior derecha       esquina inf der           esquina inf izq                        centro              centro atterizar
+            #      Center                 Upper left corner             Upper right corner               Bottom right corner           Bottom left corner                  Center                    Landing Center
     points = [[base_x, base_y, 1],[base_x + 0.7, base_y + 0.7, 1],[base_x + 0.7, base_y - 0.7, 1],[base_x - 0.7, base_y - 0.7, 1], [base_x - 0.7, base_y + 0.7, 1], [base_x, base_y, 1], [base_x, base_y, 0.0], [base_x, base_y, 0.0]]
     points2 = [[base_x, base_y, 1], [base_x, base_y, 0.0]]
+    # Define an error tolerance for the position control.
     error_tolerado = 0.10
     contador = 1
 
-    saturacion_error = 0.8
-    for point in points:
-        #Implementacion del control
+    saturacion_error = 0.8  #Set the maximum velocity for saturation [m/s].
+    for point in points: # Iteration of the lists that have the coordinates in X, Y and Z to make the square sequence
+        #Control Implementation
 
         x_deseado = point[0]
         y_deseado = point[1]
@@ -288,7 +294,7 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
         error_y = abs(Y1 - y_deseado)
         error_z = abs(Z1 - z_deseado)
 
-        print("Iteracion: " + str(contador))
+        print("Iteracion: " + str(contador)) # Prints in the terminal the corner where the drone is. 
         while ( (error_x > error_tolerado) or (error_y > error_tolerado) or (error_z > error_tolerado) ):
             
             
@@ -300,7 +306,7 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
             vy_send = -kpy*(Y1 - y_deseado) - kdy*(VY1)
             vz_send = -kpz*(Z1 - z_deseado) - kdz*(VZ1)
 
-            #SATURACIONES
+           #Saturations
 
             if(vx_send > saturacion_error):
                 vx_send = saturacion_error
@@ -317,7 +323,7 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
             elif(vz_send < -saturacion_error):
                 vz_send = -saturacion_error
         
-            #se mandan las calculadas
+            # Sends the calculated speeds
             cf.commander.send_velocity_world_setpoint(vx_send, vy_send, vz_send, 0.0) #vx, vy, vz, yawRate
             time.sleep(0.1)
 
@@ -350,9 +356,10 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
    # fileName = "./logs/19_05_23_002_VueloAltura1Hilo"+  + ".csv"
     df.to_csv("./logs2_drone1/23_05_23_011_VueloCuadradoHilos_drone1.csv")
 
+#################Function that calls the sequence of the points that the drone 1 has to follow#############################
 def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel, logconf_quat, logconf_angles_rates):
     cf = scf.cf
-    #Misma funcion para el dron 2
+    #Same function for drone 2
     
     cf.log.add_config(logconf_pos_ang)
     cf.log.add_config(logconf_vel)
@@ -390,7 +397,7 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
     x_deseado = base_x
     y_deseado = base_y
     z_deseado = 1.0
-            #centro                 ezquina superior izq                ezquina superior derecha       esquina inf der           esquina inf izq                        centro              centro atterizar
+            #      Center                 Upper left corner             Upper right corner               Bottom right corner           Bottom left corner                  Center                    Landing Center
     points = [[base_x, base_y, 1],[base_x + 0.7, base_y + 0.7, 1],[base_x + 0.7, base_y - 0.7, 1],[base_x - 0.7, base_y - 0.7, 1], [base_x - 0.7, base_y + 0.7, 1], [base_x, base_y, 1], [base_x, base_y, 0.0], [base_x, base_y, 0.0]]
     points2 = [[base_x, base_y, 1], [base_x, base_y, 0.0]]
     error_tolerado = 0.10
@@ -438,7 +445,7 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
             elif(vz_send < -saturacion_error):
                 vz_send = -saturacion_error
         
-            #se mandan las calculadas
+            
             cf.commander.send_velocity_world_setpoint(vx_send, vy_send, vz_send, 0.0) #vx, vy, vz, yawRate
             time.sleep(0.1)
 
@@ -489,7 +496,7 @@ if __name__ == '__main__':
     # 180: negative X direction
     # 270: negative Y direction
 
-    #####variables de posicion y angulos########################################################
+    #####################Position variables and angles############################################
     lg_stab_pos_ang = LogConfig(name='Stabilizer1', period_in_ms=100)
 
     lg_stab_pos_ang.add_variable('stabilizer.roll', 'float')
@@ -499,7 +506,7 @@ if __name__ == '__main__':
     lg_stab_pos_ang.add_variable('stateEstimate.x', 'float')
     lg_stab_pos_ang.add_variable('stateEstimate.y', 'float')
     lg_stab_pos_ang.add_variable('stateEstimate.z', 'float')
-#############Velocidades en x,y,z#####################################################################
+    ########################Speeds in X, Y and Z#################################################
 
     lg_stab_vel = LogConfig(name='Stabilizer2', period_in_ms=100)
     
@@ -525,7 +532,7 @@ if __name__ == '__main__':
     lg_stab_angles_rates.add_variable('controller.r_yaw', 'float')
 
 ##############################################################################################
-####################Instancias para el dron 2##################################################
+####################Instances for dron 2##################################################
     lg_stab_pos_ang2 = LogConfig(name='Stabilizer5', period_in_ms=100)
 
     lg_stab_pos_ang2.add_variable('stabilizer.roll', 'float')
@@ -535,7 +542,7 @@ if __name__ == '__main__':
     lg_stab_pos_ang2.add_variable('stateEstimate.x', 'float')
     lg_stab_pos_ang2.add_variable('stateEstimate.y', 'float')
     lg_stab_pos_ang2.add_variable('stateEstimate.z', 'float')
-#############Velocidades en x,y,z#####################################################################
+#############Speeds in x,y and z###########################################################
 
     lg_stab_vel2 = LogConfig(name='Stabilizer6', period_in_ms=100)
     
@@ -563,31 +570,34 @@ if __name__ == '__main__':
 
 
 ################################################################################################
-
+    # Establish a connection with the first Crazyflie using the specified URI and create a SyncCrazyflie object.
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
+        # Establish a connection with the second Crazyflie using the specified URI and create a SyncCrazyflie object.
         with SyncCrazyflie(uri2, cf=Crazyflie(rw_cache='./cache')) as scf2:
-
-        
-
+    
+            # Set the initial position and reset the estimator for the first Crazyflie.
             set_initial_position(scf, initial_x, initial_y, initial_z, initial_yaw)
             reset_estimator(scf)
-
+    
+            # Set the initial position and reset the estimator for the second Crazyflie.
             set_initial_position(scf2, initial_x2, initial_y2, initial_z2, initial_yaw2)
             reset_estimator(scf2)
-
+    
+            # Create a thread for the first drone to run its sequence using the specified logging configurations.
             hilo_dron1 = threading.Thread(target=run_sequence, args=(scf, initial_x, initial_y, initial_z, initial_yaw,
                                                                     lg_stab_pos_ang, lg_stab_vel, lg_stab_quat, lg_stab_angles_rates))
-
+    
+            # Create a thread for the second drone to run its sequence using the specified logging configurations.
             hilo_dron2 = threading.Thread(target=run_sequence2, args=(scf2, initial_x2, initial_y2, initial_z2, initial_yaw2,
                                                                     lg_stab_pos_ang2, lg_stab_vel2, lg_stab_quat2, lg_stab_angles_rates2))
-
+    
+            # Start the execution of the threads for both drones.
             hilo_dron1.start()
             hilo_dron2.start()
-
-            #aqui se pose el codigo del lider#########################################
-
-            ##########################################################################
-
+    
+            # Placeholder for the leader code. You can add your leader code here.
+            # This section is marked with comments "aqui se pose el codigo del lider" and "###########".
+    
+            # Stop the main thread execution until both drone threads complete their sequences.
             hilo_dron1.join()
             hilo_dron2.join()
-        
