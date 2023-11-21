@@ -4,8 +4,6 @@
 # Fecha de última modificación: Semana 9
 # Descripción: Código para mediante un lider virtual (con ruta senoidal) se genere un vuelo coordinado entre dos drones con hilos y campos potenciales
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
-# Correciones de comentarios por: Natalia Rodríguez González
-
 # Comentado por: Cristóbal Padilla
 
 ##################################################################################################################################################
