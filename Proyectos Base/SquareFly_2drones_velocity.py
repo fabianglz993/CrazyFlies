@@ -6,29 +6,26 @@
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: David Padilla
 
+
 #  Copyright (C) 2019 Bitcraze AB
 
 ##################################################################################################################################################
-
-
+#Import standar libraries
 import math
 import time
+import keyboard as kb
+import threading
+import pandas
 
+#Import libraries to communicate with Crazyflie
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
-import keyboard as kb
-import threading
 
-
-
-import pandas
-
-
-#Variables globales para saber la posicion drone 1
+#Global variables to obtain the position of drone number 1.
 X1 = 0
 Y1 = 0
 Z1 = 0
@@ -37,7 +34,7 @@ VX1 = 0
 VY1 = 0
 VZ1 = 0
 
-#Variables globales para saber la posicion drone 2
+#Global variables to obtain the position of drone number 2.
 X2 = 0
 Y2 = 0
 Z2 = 0
@@ -53,10 +50,13 @@ uri2 = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E702') # Address d
 # Change the sequence according to your setup
 #             x    y    z
 
-
+#Arrays where the recolected data will be stored while the code is running.
 FINAL_ARRAY = []
 FINAL_ARRAY2 = []
 
+#############Drone 1 callbacks###################
+
+###Postition Callback####
 def pos_angCallback(timestamp, data, logconf):
     
     global FINAL_ARRAY
@@ -74,7 +74,7 @@ def pos_angCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
    
-
+###Speed Callback####
 def velCallback(timestamp, data, logconf):
 
     global FINAL_ARRAY
@@ -91,6 +91,7 @@ def velCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
+###Quaternion Callback####
 def quaternionCallback(timestamp, data, logconf):
 
     global FINAL_ARRAY
@@ -99,6 +100,7 @@ def quaternionCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
+##Angles Rate Callback####
 def anglesRatesCallback(timestamp, data, logconf):
 
     global FINAL_ARRAY
@@ -107,8 +109,9 @@ def anglesRatesCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
-#############drone 2 callbacks###################
+#############Drone 2 callbacks###################
 
+###Postition Callback####
 def pos_angCallback2(timestamp, data, logconf):
     
     global FINAL_ARRAY2
@@ -127,7 +130,7 @@ def pos_angCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
    
-
+###Speed Callback####
 def velCallback2(timestamp, data, logconf):
 
     global FINAL_ARRAY2
@@ -144,6 +147,7 @@ def velCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
 
+###Quaternion Callback####
 def quaternionCallback2(timestamp, data, logconf):
 
     global FINAL_ARRAY2
@@ -152,6 +156,7 @@ def quaternionCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
 
+##Angles Rate Callback####
 def anglesRatesCallback2(timestamp, data, logconf):
 
     global FINAL_ARRAY2
@@ -160,26 +165,34 @@ def anglesRatesCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
 
-###########################################
+##################################Function to implement the Kalman Filter##########################################################
 
 def wait_for_position_estimator(scf):
+    # Print a message indicating that the code is waiting for the position estimator to find the position.
     print('Waiting for estimator to find position...')
 
+    # Configure logging for the Kalman filter variance with a specified logging period.
     log_config = LogConfig(name='Kalman Variance', period_in_ms=500)
     log_config.add_variable('kalman.varPX', 'float')
     log_config.add_variable('kalman.varPY', 'float')
     log_config.add_variable('kalman.varPZ', 'float')
 
+    # Initialize history lists for variance values for X, Y, and Z axes.
     var_y_history = [1000] * 10
     var_x_history = [1000] * 10
     var_z_history = [1000] * 10
 
+    # Set a threshold for the difference between maximum and minimum variance values.
     threshold = 0.001
 
+    # Use a SyncLogger to capture logging data from the Crazyflie.
     with SyncLogger(scf, log_config) as logger:
+        # Iterate over the logged entries.
         for log_entry in logger:
+            # Extract the data from the log entry.
             data = log_entry[1]
 
+            # Update the variance history lists, keeping a window of the last 10 values.
             var_x_history.append(data['kalman.varPX'])
             var_x_history.pop(0)
             var_y_history.append(data['kalman.varPY'])
@@ -187,6 +200,7 @@ def wait_for_position_estimator(scf):
             var_z_history.append(data['kalman.varPZ'])
             var_z_history.pop(0)
 
+            # Calculate the minimum and maximum variance values for each axis.
             min_x = min(var_x_history)
             max_x = max(var_x_history)
             min_y = min(var_y_history)
@@ -194,14 +208,14 @@ def wait_for_position_estimator(scf):
             min_z = min(var_z_history)
             max_z = max(var_z_history)
 
-
-
+            # Check if the differences between max and min values for all axes are below the threshold.
             if (max_x - min_x) < threshold and (
                     max_y - min_y) < threshold and (
                     max_z - min_z) < threshold:
+                # If the condition is met, exit the loop and finish waiting for the position estimator.
                 break
 
-
+###############Function that recives the initial positions of the dron and uses the kalman filter############
 def set_initial_position(scf, x, y, z, yaw_deg):
     scf.cf.param.set_value('kalman.initialX', x)
     scf.cf.param.set_value('kalman.initialY', y)
@@ -210,7 +224,7 @@ def set_initial_position(scf, x, y, z, yaw_deg):
     yaw_radians = math.radians(yaw_deg)
     scf.cf.param.set_value('kalman.initialYaw', yaw_radians)
 
-
+###################Function that restarts the values previously stored in the Kalman filter##################
 def reset_estimator(scf):
     cf = scf.cf
     cf.param.set_value('kalman.resetEstimation', '1')
@@ -219,27 +233,30 @@ def reset_estimator(scf):
 
     wait_for_position_estimator(cf)
 
-
+#################Function that calls the sequence of the points that the drone 1 has to follow#############################
 def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel, logconf_quat, logconf_angles_rates):
+    # Get the Crazyflie object from the SyncCrazyflie object.
     cf = scf.cf
 
+    # Add logging configurations to the Crazyflie.
     cf.log.add_config(logconf_pos_ang)
     cf.log.add_config(logconf_vel)
     cf.log.add_config(logconf_quat)
     cf.log.add_config(logconf_angles_rates)
 
+    # Attach callback functions to handle received log data.
     logconf_pos_ang.data_received_cb.add_callback(pos_angCallback)
     logconf_vel.data_received_cb.add_callback(velCallback)
     logconf_quat.data_received_cb.add_callback(quaternionCallback)
     logconf_angles_rates.data_received_cb.add_callback(anglesRatesCallback)
 
-
+    # Start logging for each configuration.
     logconf_pos_ang.start()
     logconf_vel.start()
     logconf_quat.start()
     logconf_angles_rates.start()
 
-    
+    # Define global variables to store position and velocity information.
     global X1
     global Y1
     global Z1
@@ -247,66 +264,66 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
     global VY1
     global VZ1
 
-    kpx = 1.0  # Ganancia proporcional en X
-    kdx = 0.16 # Ganancia derivativa en X
+    # Define proportional and derivative gains for the PD controller.
+    kpx = 1.0  # Proportional gain in X
+    kdx = 0.16  # Derivative gain in X
 
-    kpy = 1.0 # Ganancia proporcional en Y
-    kdy = 0.16 # Ganancia derivativa en Y
+    kpy = 1.0  # Proportional gain in Y
+    kdy = 0.16  # Derivative gain in Y
 
-    kpz = 0.5 # Ganancia proporcional en Z
-    kdz = 0.03 # Ganancia derivativa en Z
+    kpz = 0.5  # Proportional gain in Z
+    kdz = 0.03  # Derivative gain in Z
 
-            #centro                 esquina superior izq                esquina superior derecha       esquina inf der           esquina inf izq                        centro              centro aterizar
-    points = [[base_x, base_y, 1],[base_x + 0.7, base_y + 0.7, 1],[base_x + 0.7, base_y - 0.7, 1],[base_x - 0.7, base_y - 0.7, 1], [base_x - 0.7, base_y + 0.7, 1], [base_x, base_y, 1], [base_x, base_y, 0.0], [base_x, base_y, 0.0]]
-    
-    
+                  # Center                Upper left corner            Upper right corner              Bottom right corner          Bottom left corner                  Center              Center landing
+    points = [[base_x, base_y, 1], [base_x + 0.7, base_y + 0.7, 1], [base_x + 0.7, base_y - 0.7, 1], [base_x - 0.7, base_y - 0.7, 1], [base_x - 0.7, base_y + 0.7, 1], [base_x, base_y, 1], [base_x, base_y, 0.0], [base_x, base_y, 0.0]]
 
+    # Define an error tolerance for the position control.
     error_tolerado = 0.10
     contador = 1
 
-    saturacion_error = 0.5  # Velocidad de saturación [m/s]
-    for point in points: # Ciclo for para iterar las listas que contienen las coordenadas en X, Y, Z para realizar la secuencia de cuadrado
+    saturacion_error = 0.5  #Set the maximum velocity for saturation [m/s].
+    for point in points: # Iteration of the lists that have the coordinates in X, Y and Z to make the square sequence
 
-        x_deseado = point[0] # Toma el primer valor de la lista que corresponde a X deseado
-        y_deseado = point[1] # Toma el segundo valor de la lista que corresponde a Y deseado
-        z_deseado = point[2] # Toma el tercer valor de la lista que corresponde a Z deseado
+        x_deseado = point[0] # Take the first value of the list that corresponds to the wanted X.
+        y_deseado = point[1] # Take the second value of the list that corresponds to the wanted Y.
+        z_deseado = point[2] # Take the thrid value of the list that corresponds to the wanted Z.
 
-        print(x_deseado, y_deseado, z_deseado) # Imprime las coordenadas en X, Y, Z deseadas, al punto correspondiente de la secuencia del cuadrado
+        print(x_deseado, y_deseado, z_deseado) # Prints the wanted X, Y and Z coordinates  corresponding to the square sequence. 
 
-        error_x = abs(X1 - x_deseado) # Se obtiene el error en el eje X, restando la posición actual en X menos la posición deseada en X
-        error_y = abs(Y1 - y_deseado) # Se obtiene el error en el eje Y, restando la posición actual en X menos la posición deseada en Y
-        error_z = abs(Z1 - z_deseado) # Se obtiene el error en el eje Z, restando la posición actual en X menos la posición deseada en Z
+        error_x = abs(X1 - x_deseado) # Obtains the error in the X axis, substracting the actual position in X minus the wanted X postition.
+        error_y = abs(Y1 - y_deseado) # Obtains the error in the Y axis, substracting the actual position in Y minus the wanted Y postition.
+        error_z = abs(Z1 - z_deseado) # Obtains the error in the Z axis, substracting the actual position in Z minus the wanted Z postition.
 
-        print("Iteracion: " + str(contador)) # Imprime en terminal la esquina en la cual se encuentra el drone
+        print("Iteracion: " + str(contador)) # Prints in the terminal the corner where the drone is. 
         while ( (error_x > error_tolerado) or (error_y > error_tolerado) or (error_z > error_tolerado) ): 
             
             
-            if kb.is_pressed("q"): # Linea para romper la ejecución del ciclo while mediante input del teclado presionando la tecla "q"
+            if kb.is_pressed("q"): # Break the loop if the 'q' key is pressed.
                 print("q")
                 break
 
-            vx_send = -kpx*(X1 - x_deseado) - kdx*(VX1) # Control PD de velocidad en X
-            vy_send = -kpy*(Y1 - y_deseado) - kdy*(VY1) # Control PD de velocidad en Y
-            vz_send = -kpz*(Z1 - z_deseado) - kdz*(VZ1) # Control PD de velocidad en Z
+            vx_send = -kpx*(X1 - x_deseado) - kdx*(VX1) # Speed in X PD control 
+            vy_send = -kpy*(Y1 - y_deseado) - kdy*(VY1) # Speed in Y PD control 
+            vz_send = -kpz*(Z1 - z_deseado) - kdz*(VZ1) # Speed in Z PD control 
 
-            #SATURACIONES
+            #Saturations
 
-            if(vx_send > saturacion_error): # Se satura con la velocidad de saturación si la velocidad en X es mayor que la velocidad de saturación en dirección positiva
+            if(vx_send > saturacion_error): # Is saturates with the saturation velocity if the velocity in X is greater than the saturation velocity in positive direction. 
                 vx_send = saturacion_error
-            elif(vx_send < -saturacion_error): # Se satura con la velocidad de saturación si la velocidad en X es mayor que la velocidad de saturación en dirección negativa
+            elif(vx_send < -saturacion_error): # It saturates with the saturation velocity if the velocity in X is greater than the saturation velocity in the negative direction
                 vx_send = -saturacion_error
 
-            if(vy_send > saturacion_error): # Se satura con la velocidad de saturación si la velocidad en Y es mayor que la velocidad de saturación en dirección positiva
+            if(vy_send > saturacion_error): # It saturates with the saturation velocity if the velocity in Y is greater than the saturation velocity in the positive direction
                 vy_send = saturacion_error
-            elif(vy_send < -saturacion_error): # Se satura con la velocidad de saturación si la velocidad en Y es mayor que la velocidad de saturación en dirección negativa
+            elif(vy_send < -saturacion_error): # It saturates with the saturation velocity if the velocity in Y is greater than the saturation velocity in the negative direction
                 vy_send = -saturacion_error
             
-            if(vz_send > saturacion_error): # Se satura con la velocidad de saturación si la velocidad en Z es mayor que la velocidad de saturación en dirección positiva
+            if(vz_send > saturacion_error): #It saturates with the saturation velocity if the velocity in Z is greater than the saturation velocity in the positive direction
                 vz_send = saturacion_error
-            elif(vz_send < -saturacion_error): # Se satura con la velocidad de saturación si la velocidad en Z es mayor que la velocidad de saturación en dirección negativa
+            elif(vz_send < -saturacion_error): #It saturates with the saturation velocity if the velocity in Z is greater than the saturation velocity in the negative direction
                 vz_send = -saturacion_error
         
-            #se mandan las velocidades calculadas
+            # Sends the calculated speeds
             cf.commander.send_velocity_world_setpoint(vx_send, vy_send, vz_send, 0.0) # Velocidad en X, Velocidad en Y, Velocidad en Z, Yaw rate
             time.sleep(0.1)
 
@@ -338,26 +355,30 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
 
     df.to_csv("Data.csv")
 
+#################Function that calls the sequence of the points that the drone 1 has to follow#############################
 def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel, logconf_quat, logconf_angles_rates):
+    # Get the Crazyflie object from the SyncCrazyflie object.
     cf = scf.cf
 
+    # Add logging configurations to the Crazyflie.
     cf.log.add_config(logconf_pos_ang)
     cf.log.add_config(logconf_vel)
     cf.log.add_config(logconf_quat)
     cf.log.add_config(logconf_angles_rates)
 
+    # Attach callback functions to handle received log data.
     logconf_pos_ang.data_received_cb.add_callback(pos_angCallback2)
     logconf_vel.data_received_cb.add_callback(velCallback2)
     logconf_quat.data_received_cb.add_callback(quaternionCallback2)
     logconf_angles_rates.data_received_cb.add_callback(anglesRatesCallback2)
 
-
+    # Start logging for each configuration.
     logconf_pos_ang.start()
     logconf_vel.start()
     logconf_quat.start()
     logconf_angles_rates.start()
 
-    
+    # Define global variables to store position and velocity information for drone 2.
     global X2
     global Y2
     global Z2
@@ -365,26 +386,26 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
     global VY2
     global VZ2
 
-    kpx = 1.0 # Ganancia proporcional en X drone 2
-    kdx = 0.16 # Ganancia derivativa en X drone 2
+    # Define proportional and derivative gains for the PD controller for drone 2.
+    kpx = 1.0  # Proportional gain in X for drone 2
+    kdx = 0.16  # Derivative gain in X for drone 2
 
-    kpy = 1.0 # Ganancia proporcional en Y drone 2
-    kdy = 0.16 # Ganancia derivativa en Y drone 2
+    kpy = 1.0  # Proportional gain in Y for drone 2
+    kdy = 0.16  # Derivative gain in Y for drone 2
 
-    kpz = 0.5 # Ganancia proporcional en Z drone 2
-    kdz = 0.03 # Ganancia derivativa en Z drone 2
+    kpz = 0.5  # Proportional gain in Z for drone 2
+    kdz = 0.03  # Derivative gain in Z for drone 2
 
-    
-            #centro                 esquina superior izq                esquina superior derecha       esquina inf der           esquina inf izq                        centro              centro atterizar
-    points = [[base_x, base_y, 1],[base_x + 0.7, base_y + 0.7, 1],[base_x + 0.7, base_y - 0.7, 1],[base_x - 0.7, base_y - 0.7, 1], [base_x - 0.7, base_y + 0.7, 1], [base_x, base_y, 1], [base_x, base_y, 0.0], [base_x, base_y, 0.0]]
-    
+                  # Center                Upper left corner            Upper right corner              Bottom right corner          Bottom left corner                  Center              Center landing
+    points = [[base_x, base_y, 1], [base_x + 0.7, base_y + 0.7, 1], [base_x + 0.7, base_y - 0.7, 1], [base_x - 0.7, base_y - 0.7, 1], [base_x - 0.7, base_y + 0.7, 1], [base_x, base_y, 1], [base_x, base_y, 0.0], [base_x, base_y, 0.0]]
 
+    # Define an error tolerance for the position control.
     error_tolerado = 0.10
     contador = 1
 
+    # Set the maximum velocity for saturation [m/s].
     saturacion_error = 0.5
     for point in points:
-
         x_deseado = point[0]
         y_deseado = point[1]
         z_deseado = point[2]
@@ -398,7 +419,7 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
         print("Iteracion: " + str(contador))
         while ( (error_x > error_tolerado) or (error_y > error_tolerado) or (error_z > error_tolerado) ):
             
-            
+            # Break the loop if the 'q' key is pressed.
             if kb.is_pressed("q"):
                 print("q")
                 break
@@ -407,7 +428,7 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
             vy_send = -kpy*(Y2 - y_deseado) - kdy*(VY2)
             vz_send = -kpz*(Z2 - z_deseado) - kdz*(VZ2)
 
-            #SATURACIONES
+            # Saturations
 
             if(vx_send > saturacion_error):
                 vx_send = saturacion_error
@@ -424,39 +445,38 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
             elif(vz_send < -saturacion_error):
                 vz_send = -saturacion_error
         
-            #se mandan las calculadas
-            cf.commander.send_velocity_world_setpoint(vx_send, vy_send, vz_send, 0.0) #vx, vy, vz, yawRate
+            # Sends the calculated speeds
+            cf.commander.send_velocity_world_setpoint(vx_send, vy_send, vz_send, 0.0)  # vx, vy, vz, yawRate
             time.sleep(0.1)
 
             error_x = abs(X2 - x_deseado)
             error_y = abs(Y2 - y_deseado)
             error_z = abs(Z2 - z_deseado)
 
-
-        contador+=1
+        contador += 1
         time.sleep(0.5)
 
-
-
+    # Stop logging for each configuration.
     logconf_pos_ang.stop()
     logconf_vel.stop()
     logconf_quat.stop()
     logconf_angles_rates.stop()
 
+    # Send a stop setpoint to stop the Crazyflie.
     cf.commander.send_stop_setpoint()
-        # Make sure that the last packet leaves before the link is closed
-        # since the message queue is not flushed before closing
+    # Make sure that the last packet leaves before the link is closed
+    # since the message queue is not flushed before closing
     time.sleep(0.1)
     global FINAL_ARRAY2
+    # Create a DataFrame from the global array and save it to a CSV file.
     df = pandas.DataFrame(FINAL_ARRAY2)
-
     df.to_csv("Data.csv")
+
 
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
 
-    # Set these to the position and yaw based on how your Crazyflie is placed
-    # on the floor
+    # Set these to the position and yaw based on how your Crazyflie is placed on the floor
     initial_x = 1.47 
     initial_y = 1.5 #3.15
     initial_z = 0.0
@@ -471,7 +491,7 @@ if __name__ == '__main__':
     # 180: negative X direction
     # 270: negative Y direction
 
-    #####variables de posicion y angulos########################################################
+    #####################Position variables and angles############################################
     lg_stab_pos_ang = LogConfig(name='Stabilizer1', period_in_ms=100)
 
     lg_stab_pos_ang.add_variable('stabilizer.roll', 'float')
@@ -481,7 +501,7 @@ if __name__ == '__main__':
     lg_stab_pos_ang.add_variable('stateEstimate.x', 'float')
     lg_stab_pos_ang.add_variable('stateEstimate.y', 'float')
     lg_stab_pos_ang.add_variable('stateEstimate.z', 'float')
-#############Velocidades en x,y,z#####################################################################
+    ########################Speeds in X, Y and Z#################################################
 
     lg_stab_vel = LogConfig(name='Stabilizer2', period_in_ms=100)
     
@@ -489,7 +509,7 @@ if __name__ == '__main__':
     lg_stab_vel.add_variable('stateEstimate.vy', 'float')
     lg_stab_vel.add_variable('stateEstimate.vz', 'float')
 
-###################### QUATERNIONS PART#############################################################################
+    ###################### QUATERNIONS PART######################################################
 
     lg_stab_quat = LogConfig(name='Stabilizer3', period_in_ms=100)
     
@@ -507,7 +527,7 @@ if __name__ == '__main__':
     lg_stab_angles_rates.add_variable('controller.r_yaw', 'float')
 
 ##############################################################################################
-####################Instancias para el dron 2##################################################
+####################Instances for dron 2##################################################
     lg_stab_pos_ang2 = LogConfig(name='Stabilizer5', period_in_ms=100)
 
     lg_stab_pos_ang2.add_variable('stabilizer.roll', 'float')
@@ -517,7 +537,7 @@ if __name__ == '__main__':
     lg_stab_pos_ang2.add_variable('stateEstimate.x', 'float')
     lg_stab_pos_ang2.add_variable('stateEstimate.y', 'float')
     lg_stab_pos_ang2.add_variable('stateEstimate.z', 'float')
-#############Velocidades en x,y,z#####################################################################
+#############Speeds in x,y and z###########################################################
 
     lg_stab_vel2 = LogConfig(name='Stabilizer6', period_in_ms=100)
     
@@ -546,30 +566,34 @@ if __name__ == '__main__':
 
 ################################################################################################
 
+    # Establish a connection with the first Crazyflie using the specified URI and create a SyncCrazyflie object.
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
+        # Establish a connection with the second Crazyflie using the specified URI and create a SyncCrazyflie object.
         with SyncCrazyflie(uri2, cf=Crazyflie(rw_cache='./cache')) as scf2:
-
-        
-
+    
+            # Set the initial position and reset the estimator for the first Crazyflie.
             set_initial_position(scf, initial_x, initial_y, initial_z, initial_yaw)
             reset_estimator(scf)
-
+    
+            # Set the initial position and reset the estimator for the second Crazyflie.
             set_initial_position(scf2, initial_x2, initial_y2, initial_z2, initial_yaw2)
             reset_estimator(scf2)
-
+    
+            # Create a thread for the first drone to run its sequence using the specified logging configurations.
             hilo_dron1 = threading.Thread(target=run_sequence, args=(scf, initial_x, initial_y, initial_z, initial_yaw,
                                                                     lg_stab_pos_ang, lg_stab_vel, lg_stab_quat, lg_stab_angles_rates))
-
+    
+            # Create a thread for the second drone to run its sequence using the specified logging configurations.
             hilo_dron2 = threading.Thread(target=run_sequence2, args=(scf2, initial_x2, initial_y2, initial_z2, initial_yaw2,
                                                                     lg_stab_pos_ang2, lg_stab_vel2, lg_stab_quat2, lg_stab_angles_rates2))
-
+    
+            # Start the execution of the threads for both drones.
             hilo_dron1.start()
             hilo_dron2.start()
-
-            #aqui se pose el codigo del lider#########################################
-
-            ##########################################################################
-
+    
+            # Placeholder for the leader code. You can add your leader code here.
+            # This section is marked with comments "aqui se pose el codigo del lider" and "###########".
+    
+            # Stop the main thread execution until both drone threads complete their sequences.
             hilo_dron1.join()
             hilo_dron2.join()
-        

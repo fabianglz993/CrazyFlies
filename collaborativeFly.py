@@ -5,6 +5,7 @@
 # Descripción: Código para mediante un lider virtual (con ruta senoidal) se genere un vuelo coordinado entre dos drones
 # Formato de nombrar variables y funciones: Minúsculas y descriptivas
 # Comentado por: Cristóbal Padilla
+#
 
 ##################################################################################################################################################
 
@@ -26,7 +27,7 @@ import numpy as np
 '''
 Variables globales
 '''
-# URI de los drones a los que se van a conectar
+# URI of the drones to which they are going to connect
 uri1 = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E701')
 uri2 = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E702')
 
@@ -34,6 +35,7 @@ uri2 = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E702')
 '''
 Funciones
 '''
+#Kalman Filter
 def wait_for_position_estimator(scf):    
      '''
     Hace el calculo de la estimacion del dron una vez se reinicia
@@ -73,7 +75,7 @@ def wait_for_position_estimator(scf):
 
             if (max_x - min_x) < threshold and (max_y - min_y) < threshold and (max_z - min_z) < threshold:
                 break
-
+#Function that recives the initial positions of the dron and uses the kalman filter
 def set_initial_position(scf, x, y, z, yaw_deg):
      '''
     Establece la posición inicial del dron y hace las estimaciones correctas
@@ -93,7 +95,7 @@ def set_initial_position(scf, x, y, z, yaw_deg):
     scf.cf.param.set_value('kalman.initialYaw', yaw_radians)
 
 
-#funcion para resetear el estimador del dron
+#Function to reset the drone estimator
 def reset_estimator(scf):
     cf = scf.cf
     cf.param.set_value('kalman.resetEstimation', '1')
@@ -102,14 +104,14 @@ def reset_estimator(scf):
 
     wait_for_position_estimator(cf)
 
-
+#Function that calls the sequence of the points that the drones hav to follow
 def run_sequence(scf, base_x, base_y, base_z, yaw, base_x2, base_y2, base_z2, scf2):
 
-    #Se establecen las instancias del dron y el dron 2 
+    #Drone and drone 2 instances are established
     cf = scf.cf
     cf2 = scf2.cf
 
-    # Se establecen los ejes para la grafica
+    # The axes for the graph are established
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     ax.spines['left'].set_position('zero')
@@ -119,12 +121,12 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, base_x2, base_y2, base_z2, sc
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
 
-    # Se hacen los vectores para la función senoidal a seguir y se grafica en azul
+    # The vectors for the sinusoidal function to follow are made and graphed in blue
     x1 = np.linspace(0, 1.5*np.pi, 25) + 0.5 
     y1 = np.sin(x1)+1.5
     line1, = ax.plot(y1, x1, 'b')
 
-    # SE GRAFICAN LOS LIMITES DEL ÁREA DE TRABAJO EN VERDE########################################
+    # THE BOUNDARIES OF THE WORK AREA ARE GRAPHIC IN GREEN########################################
     leftLine_y = np.linspace(0, 6.3, 2)
     leftLine_x = 0.0 + leftLine_y*0
     leftLine, = ax.plot(leftLine_x, leftLine_y, 'g')
@@ -142,11 +144,11 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, base_x2, base_y2, base_z2, sc
     botLine, = ax.plot(botLine_y, botLine_x, 'g')
     #################################################################################################
 
-    # Se establecen los límites de los ejes en X y Y
+    # The limits of the X and Y axes are established
     ax.set_xlim(-3, 2*np.pi)
     ax.set_ylim(-3, 7)
 
-    # Se generan vectores vacios donde se irá graficando en tiempo real el movimiento del lider virtual en rojo
+    # Empty vectors are generated where the movement of the virtual leader in red will be graphed in real time.
     x2 = []
     y2 = []
     line2, = ax.plot([], [], 'r')
@@ -154,74 +156,74 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, base_x2, base_y2, base_z2, sc
 
     #------------------------------------------------------------------------
 
-    #Iniciar variables para el lider virtual
+    #Start variables for the virtual leader
 
-    #posicion lider virtual
+    #Virtual leader position
     x_lider = 0.5
     y_lider = 2.0
 
-    #Variables del carro y tiempo
+    #Car variables and time
     l = 0.2
     t = 0
     Tf = 0.1
     dt = 0.01
 
-    #Angulo inicial del lider y constantes de control
+    #Initial angle of the leader and control constants
     theta =  0.7854
     kt = 10
     kr = 100
 
-    #distancias conocidad para la referencia geometrica
+    #Known distances for geometric reference
     dc = 0.25
 
 
     #------------------------------------------------------------------------
 
-    #Son los puntos deseados a seguir que genera el lider virtual
+    #They are the desired points to follow that the virtual leader generates.
     punto_deseado1, = ax.plot(0, 0, marker='*', color='red')
     punto_deseado2, = ax.plot(0, 0, marker='*', color='red')
 
-    #despegue de drones donde inicien y mantenerlos a 1 metro de altura
+    #Take off drones where they start and keep them at 1 meter high
     cf.commander.send_position_setpoint(base_x, base_y, 1.0, yaw)
     cf2.commander.send_position_setpoint(base_x2, base_y2, 1.0, yaw)
     time.sleep(0.1)
 
 
-    # Inicia el loop inicial con el movimiento del lider 
+    # Start the initial loop with the movement of the leader 
     for i in range(len(x1)):
 
-        #punto deseado del lider virtual
+        #Desired point of the virtual leader
         xd = x1[i]
         yd = y1[i]
         
-        #puntos deseados en X y Y para el primer punto deseado
+        #Desired points in X and Y for the first desired point
         p1x = x_lider - dc*np.sin(theta)
         p1y = y_lider + dc*np.cos(theta)
 
-        #puntos deseados en X y Y para el segundo punto deseado
+        #Desired points in X and Y for the second desired point
         p2x = x_lider + dc*np.sin(theta)
         p2y = y_lider - dc*np.cos(theta)
 
-        #error actual del punto deseado del lider y posicion actual
+        #Current error of the leader's desired point and current position
         xe = x_lider - xd
         ye = y_lider - yd 
 
-        #ciclo que se ejecuta hasta tener un error menor al 5% en el lider en X y Y
+        #Cycle that is executed until there is an error of less than 5% in the leader in X and Y
         while (abs(xe)>0.05 or abs(ye)>0.05 ):
 
-            #calculo del error
+            #Error calculation
             xe = x_lider - xd
             ye = y_lider - yd 
 
-            #se calcula el angulo deseado y el error del lider virtual
+            #The desired angle and the error of the virtual leader are calculated.
             theta_d = math.atan2(yd - y_lider, xd - x_lider)
             theta_e = theta - theta_d
 
-            #se calcula la velocidad del lider asi como la velocidad angular
+            #The speed of the leader is calculated as well as the angular velocity
             v = kt*math.sqrt(xe**2 + ye**2)
             omega = -kr*theta_e
 
-            #saturacion de velocidades
+            #Speed ​​saturation
             if(v>1):
                 v = 1
             if(omega>(np.pi/2)):
@@ -229,20 +231,20 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, base_x2, base_y2, base_z2, sc
             if(omega<(-np.pi/2)):
                 omega = -np.pi/2   
 
-            #calculo de velocidades por llanta
+            #Calculation of speeds per tire
             vr = v + 0.5*l*omega
             vl = v - 0.5*l*omega
 
-            #calculo de velocidades completas de lineal y angular 
+            #Calculation of complete linear and angular velocities 
             v = (vr + vl)/2
             omega = (vr - vl)/l
 
-            #se calcula la derivada de la posicion en X , Y y theta.
+            #The derivative of the position in X, Y and theta is calculated.
             xp = v*math.cos(theta)
             yp = v*math.sin(theta)
             thetap = omega
 
-            #Integrar para obtener posicion del lider
+            #Integrate to obtain leader position
             x_lider = x_lider + xp*dt
             y_lider = y_lider + yp*dt 
             theta = theta + thetap*dt
@@ -250,28 +252,28 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, base_x2, base_y2, base_z2, sc
             t = t + dt
 
             #---------------------------------------------------------
-            #GRAFICAR, BLOQUE
+            #GRAPH, BLOCK
 
-            # Se añade a las listas vacias la posicion del lider
+            # The position of the leader is added to the empty lists
             x2.append(x_lider)
             y2.append(y_lider)
             
-            # se actualiza en la grafica la posicion del lider recorrida en rojo
+            # The position of the leader in red is updated in the graph.
             line2.set_xdata(y2)
             line2.set_ydata(x2)
 
-            #Actualizar dato nuevo en gráfica para los puntos deseados calculados
+            #Update new data in graph for the desired points calculated
             punto_deseado1.set_data(p1y, p1x)
             punto_deseado2.set_data(p2y, p2x)
             
-            # Se dibuja la grafica completa con la ruta a seguir, el lider y puntos deseados
+            # The complete graph is drawn with the route to follow, the leader and desired points.
             plt.draw()
             
-            # Pausa para graficar bien los datos
+            # Pause to graph the data well
             plt.pause(0.01) 
             #---------------------------------------------------------
-            #Se calculan las posiciones a mandar para cada drone dependiendo de donde inicio y los puntos
-            #deseados calculados por el lider
+            #The positions to be sent for each drone are calculated depending on where it starts and the points.
+            #desired calculated by the leader
             x_drone1 = p1y + base_x
             y_drone1 = p1x + base_y
             z_drone1 = 1.0
@@ -280,21 +282,21 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, base_x2, base_y2, base_z2, sc
             y_drone2 = p2x + base_y2
             z_drone2 = 1.0
         
-        #Se mandan los puntos calculados a cada dron
+        #The calculated points are sent to each drone
         cf.commander.send_position_setpoint(x_drone2, y_drone2, z_drone2, yaw)
         cf2.commander.send_position_setpoint(x_drone1, y_drone1, z_drone1, yaw)
         time.sleep(0.1)
 
-    # Se muestra la grafica final
+    # The final graph is shown
         plt.show()
 
-    #Se mandan los drones a una altura baja para aterrizar
+    #Drones are sent to a low altitude to land
     cf.commander.send_position_setpoint(x_drone1, y_drone1, 0.15, yaw)
     cf2.commander.send_position_setpoint(x_drone2, y_drone2, 0.15, yaw)
 
     time.sleep(2)
 
-    #Se termina el vuelo y se frenan los motores
+    #The flight ends and the engines stop
     cf.commander.send_stop_setpoint()
     cf2.commander.send_stop_setpoint()
     # Make sure that the last packet leaves before the link is closed
@@ -305,34 +307,34 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, base_x2, base_y2, base_z2, sc
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
 
-    # Posicion del dron 1 en X,Y,Z y orientación en yaw
+    # Position of drone 1 in X,Y,Z and orientation in yaw
     initial_x = 2.70
     initial_y = 3.15
     initial_z = 0.0
     initial_yaw = 90  # In degrees
     
-    # Posicion del dron 2 en X,Y,Z y orientación en yaw
+    #Position of drone 2 in X,Y,Z and orientation in yaw
     initial_x2 = 0.2
     initial_y2 = 3.15
     initial_z2 = 0.0
 
 
 
-    #Conexión a dron 1  
+    #Drone 1 connection  
     with SyncCrazyflie(uri1, cf=Crazyflie(rw_cache='./cache')) as scf:
 
-        #establecer posicion inicial del dron 1
+        #Set initial position of drone 1
         set_initial_position(scf, initial_x, initial_y, initial_z, initial_yaw)
         #reiniciar estimador para el dron 1 
         reset_estimator(scf)
         
-        #conexión al dron 2
+        #Drone 2 connection 
         with SyncCrazyflie(uri2, cf=Crazyflie(rw_cache='./cache')) as scf2:
 
-            #establecer posición inicial del dron 2
+            #Set initial position of drone 2
             set_initial_position(scf2, initial_x2, initial_y2, initial_z2, initial_yaw)
-            #reiniciar el estimador para el dron 2
+            #Reset estimator for drone 2
             reset_estimator(scf2)
 
-            #iniciar la secuencia donde los drones siguen al lider virtual
+            #Start the sequence where the drones follow the virtual leader
             run_sequence(scf, initial_x, initial_y, initial_z, initial_yaw, initial_x2, initial_y2, initial_z2, scf2)

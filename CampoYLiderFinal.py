@@ -7,42 +7,42 @@
 # Comentado por: Cristóbal Padilla
 
 ##################################################################################################################################################
-
+#Import standar libraries
 import math
 import time
+import keyboard as kb
+import threading
+import pandas
+import matplotlib.pyplot as plt
+import numpy as np
 
+#Import libraries to communicate with Crazyflie
 import cflib.crtp
 from cflib.crazyflie import Crazyflie
 from cflib.crazyflie.log import LogConfig
 from cflib.crazyflie.syncCrazyflie import SyncCrazyflie
 from cflib.crazyflie.syncLogger import SyncLogger
 from cflib.utils import uri_helper
-import keyboard as kb
-import threading
-
-import pandas
-
-import matplotlib.pyplot as plt
-import numpy as np
 
 
-#Se establecen los puntos deseados donde deberán llegar los drones inicialmente, en X y Y son donde pongas el dron en el mapa al inicio
-# y en Z es la altura a la que quieres que llegue al inicio, para establizarse primero.
 
-#posicion dron 1
+#The desired points are established where the drones should arrive initially, in X and Y are where you put the drone on the map at the beginning
+# and in Z is the height you want it to reach at the beginning, to stabilize first.
+
+#Position of Done 1¿
 puntoDeseado_x_dron1 = 1.0
 puntoDeseado_y_dron1 = 0.2
 puntoDeseado_z_dron1 = 1.0
 
-#posicion dron 2
+#Position of Done 2
 puntoDeseado_x_dron2 = 2.0
 puntoDeseado_y_dron2 = 0.2
 puntoDeseado_z_dron2 = 1.0
 
-#bandera para determinar si el lider virtual sigue corriendo o ya terminó su ejecución
+#Flag to determine if the virtual leader is still running or has already finished executing
 liderAunCorreFlag = True
 
-#VVariables globales para saber la posicion drone 1 con los LOGS
+#Global variables to know the position of drone 1 with the LOGS
 X1 = 0
 Y1 = 0
 Z1 = 0
@@ -51,7 +51,7 @@ VX1 = 0
 VY1 = 0
 VZ1 = 0
 
-#VVariables globales para saber la posicion drone 2 con los LOGS
+#Global variables to know the position of drone 2 with the LOGS
 X2 = 0
 Y2 = 0
 Z2 = 0
@@ -61,23 +61,21 @@ VY2 = 0
 VZ2 = 0
 
 
-# URI de los crazyfly a los que se conectará. Lo que corresponde al dron 1 corresponde a la URI normal, lo 
-# del dron2 corresponde a la uri2.
+# URI of the crazyfly to which it will connect. What corresponds to drone 1 corresponds to the normal URI, which
+# of drone2 corresponds to uri2.
 uri = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E703')
 uri2 = uri_helper.uri_from_env(default='radio://0/80/2M/E7E7E7E702')
 
 
-#Listas donde se almacenarán los datos del dron1 y el dron2
+#Arrays where the recolected data of both drones will be stored while the code is running.
 FINAL_ARRAY = []
 FINAL_ARRAY2 = []
 
 
-#función que manda a llamar al lider Virtual y sus graficas con los puntos deseados y posiciones de drones en tiempo real
-#NOTA: Esta función tiene que correrse en el hilo principal del código, pues las librerías de matplotlib así lo requiere.
+#Function that calls the Virtual leader and its graphs with the desired points and drone positions in real time
+#NOTE: This function has to be run in the main code thread, since the matplotlib libraries require it.
 def liderVirtual():
-
-
-    # Se configuran los ejes de la gráfica 
+    # Set the axis of the graph.  
     fig = plt.figure()
     ax = fig.add_subplot(1, 1, 1)
     ax.spines['left'].set_position('zero')
@@ -87,12 +85,12 @@ def liderVirtual():
     ax.xaxis.set_ticks_position('bottom')
     ax.yaxis.set_ticks_position('left')
 
-    # Se genera el vector con la función senoidal que deberá seguir el lider virtual y se grafica en azul.
+    # The vector is generated with the sine function that the virtual leader must follow and is graphed in blue.
     x1 = np.linspace(0, 1.5*np.pi, 50) + 0.5 
     y1 = 0.5*np.sin(x1)+1.5
     line1, = ax.plot(y1, x1, 'b')
 
-    ########### SE GENERA EL CUADRADO (área de trabajo) DE LOS DRONES EN VERDE ################################
+    ########### The square is generated (work area) of the drones in green################################
     leftLine_y = np.linspace(0, 6.3, 2)
     leftLine_x = 0.0 + leftLine_y*0
     leftLine, = ax.plot(leftLine_x, leftLine_y, 'g')
@@ -109,14 +107,14 @@ def liderVirtual():
     botLine_x = 0 + botLine_y*0
     botLine, = ax.plot(botLine_y, botLine_x, 'g')
 
-    ################ FIN DE GENERACIÓN DE ÁREA DE TRABAJO ################################ 
+    ################ End of the work area generation################################ 
 
 
-    # Se definen los límites de la gráfica (solo para visualización)
+    # The limits of the graph are defined (for display only)
     ax.set_xlim(-3, 2*np.pi)
     ax.set_ylim(-3, 7)
 
-    # Se generan las listas vacias que almacenarán la ruta seguida por el lider virtual en rojo
+    # Empty lists are generated that will store the route followed by the virtual leader in red
     x2 = []
     y2 = []
     line2, = ax.plot([], [], 'r')
@@ -124,98 +122,93 @@ def liderVirtual():
 
     #------------------------------------------------------------------------
 
-    #Iniciar variables para el lider virtual
+    #Start variables for the virtual leader
 
-    #posicion inicial del lider virtual
+    #Initial position of th evirtual leader
     x_lider = 0.5
     y_lider = 1.72
 
-    #Variables del carro y tiempo
+    #Car variables and time
     l = 0.2
     t = 0
     Tf = 0.1
     dt = 0.01
 
-    #Angulo inicial del lider y constantes de control
+    #Initial angle of the leader and control constants
     theta =  0.7854
     kt = 5 
     kr = 100
 
-    #distancias conocidad para la referencia geometrica, del centro al punto deseado
+    #Known distances for the geometric reference, from the center to the desired point
     dc = 0.5
 
 
     #------------------------------------------------------------------------
-
-    #se crean las instancias para graficar los puntos deseados en tiempo real en rojo.
+    #Instances are created to plot the desired points in real time in red.
     punto_deseado1, = ax.plot(0, 0, marker='*', color='red')
     punto_deseado2, = ax.plot(0, 0, marker='*', color='red')
 
-    #se crean las instacias para graficar la posicion de los drones en tiempo real en azul.
+    #Instances are created to graph the position of the drones in real time in blue.
     dron1_posActual, = ax.plot(0, 0, marker='*', color='blue')
     dron2_posActual, = ax.plot(0, 0, marker='*', color='blue')
 
-    #Se toman las variables globales de los puntos deseados para cada dron
+    #The global variables of the desired points are taken for each drone
     global puntoDeseado_x_dron1
     global puntoDeseado_y_dron1
-
     global puntoDeseado_x_dron2
     global puntoDeseado_y_dron2
-
-    #Se toman la posicion de los drones de las variables globales que se actualizan en los logs
+    
+    #The position of the drones is taken from the global variables that are updated in the logs
     global X1
     global Y1
     global X2
     global Y2
 
-    #tiempo para que los drones vuelen tranquilos, se estabilizen y luego comience el lider virtual
+    #Time for the drones to fly calmly, stabilize and then the virtual leader begins
     time.sleep(5)
 
     # Inicia la secuencia para el líder virtual, se generan los puntos deseados y los drones se mueven en formación.
     for i in range(len(x1)):
 
-        #se toma el siguiente punto deseado para el lider virtual
+        #The next desired point is taken for the virtual leader
         xd = x1[i]
         yd = y1[i]
+        t = 0 #Time is reset to 0 every time you move to a desired point
 
-        #se reinica el tiempo a 0 cada que se mueve a un punto deseado
-        t = 0
-
-        #se calculan los puntos deseados en formación geométrica para el dron 2
+        #The desired points are calculated in geometric formation for drone 2
         p2x = x_lider - dc*np.sin(theta)
         p2y = y_lider + dc*np.cos(theta)
 
-        #se calculan los puntos deseados en formación geométrica para el dron 1
+        #The desired points are calculated in geometric formation for drone 1
         p1x = x_lider + dc*np.sin(theta)
         p1y = y_lider - dc*np.cos(theta)
 
-        #las variables globales de puntos deseados son actualizadas con los cálculos del lider virtual
+        #The global variables of desired points are updated with the calculations of the virtual leader
         puntoDeseado_x_dron1 = p1y
         puntoDeseado_y_dron1 = p1x
         puntoDeseado_x_dron2 = p2y
         puntoDeseado_y_dron2 = p2x
 
-        #error de posicion del lider virtual
+        #Virtual leader position error
         xe = x_lider - xd
         ye = y_lider - yd 
-
         
-        #ciclo while para definir cuando el lider virtual llegue a un punto deseado
+        #While loop to define when the virtual leader reaches a desired point
         while (abs(xe)>0.05 or abs(ye)>0.05 ):
 
-            #calculo del error
+            #Error
             xe = x_lider - xd
             ye = y_lider - yd 
 
-            #se calcula el angulo deseado y el error
+            #Angle and error
             theta_d = math.atan2(yd - y_lider, xd - x_lider)
             theta_e = theta - theta_d
 
-            #se calcula la velocidad del lider asi como su velocidad angular
+            #The speed of the leader is calculated as well as its angular velocity
             v = kt*math.sqrt(xe**2 + ye**2)
             omega = -kr*theta_e
 
-            #se saturan ambas velocidades para que no vaya muy rapido y no gire muy brusco
+            #Both speeds are saturated so that it does not go too fast and does not turn too abruptly.
             if(v>1):
                 v = 1
             if(omega>(np.pi/2)):
@@ -223,39 +216,39 @@ def liderVirtual():
             if(omega<(-np.pi/2)):
                 omega = -np.pi/2   
 
-            #calculo de velocidades en cada llanta para el lider virtual
+            #Calculation of speeds on each tire for the virtual leader
             vr = v + 0.5*l*omega
             vl = v - 0.5*l*omega
 
-            #calculo de las velocidades generales
+            #Spped calculation
             v = (vr + vl)/2
             omega = (vr - vl)/l
 
-            #calculo de las derivadas de posicion y ángulo
+            #Calculation of the derivatives of position and angle
             xp = v*math.cos(theta)
             yp = v*math.sin(theta)
             thetap = omega
 
-            #Integrar para obtener posicion del lider
+            #Integrate to obtain leader position
             x_lider = x_lider + xp*dt
             y_lider = y_lider + yp*dt 
             theta = theta + thetap*dt
 
-            #se acumula el tiempo de simulación
+            #Simulation time accumulates
             t = t + dt
 
             #---------------------------------------------------------
-            #############################PARTE PARA GRAFICAR LOS DATOS EN TIEMPO REAL###############################
+            #############################PART TO GRAPH DATA IN REAL TIME###############################
 
-            # Se añaden los datos de posicion del lider virtual para ser graficados
+            # The position data of the virtual leader is added to be graphed
             x2.append(x_lider)
             y2.append(y_lider)
             
-            # Se actualiza la grafica del lider virtual con su posicion y trayectoria recorrida en rojo
+            # The graph of the virtual leader is updated with his position and path traveled in red
             line2.set_xdata(y2)
             line2.set_ydata(x2)
 
-            #Se actualizan los datos de los puntos deseados y de los drones en tiempo real
+            #The data of the desired points and the drones are updated in real time
             
             punto_deseado1.set_xdata([p1y])
             punto_deseado1.set_ydata([p1x])
@@ -269,33 +262,32 @@ def liderVirtual():
             dron2_posActual.set_xdata([X2])
             dron2_posActual.set_ydata([Y2])
             
-            # Se dibuja la grafica con todos los datos
+            # The graph is drawn with all the data
             plt.draw()
             
-            # Pausa para actualizar los datos de manera correcta
+            # Pause to update data correctly
             plt.pause(0.01) 
             #---------------------------------------------------------
-            #################################### FIN DEL BLOQUE DE GRAFICAR#############################################
-
-   
-    #se toman los puntos deseados para z de ambos drones y se bajan a 0 por 5 segundos.
-    #Esto se hace para que estén en una posición segura antes de aterrizar.
+            ####################################END OF GRAPHING BLOCK###################################################
+    
+    #####The desired points for z of both drones are taken and lowered to 0 for 5 seconds. This is done so that they are in a safe position before landing.###############
     global puntoDeseado_z_dron1
     global puntoDeseado_z_dron2
 
     puntoDeseado_z_dron1 = 0.0
     puntoDeseado_z_dron2 = 0.0
 
-    #print para saber que ya está aterrizando ambos drones
+    #Print to show that both drones are landing 
     print("Aterrizando . . .")
     time.sleep(5)
 
-    #se toma la bandera de si el lider sigue corriendo para ponerla en falsa.
-    #Esto genera que ambos hilos (dron 1 y dron 2) terminen su ejecución y por ende termine el codigo
+    #The flag is taken if the leader is still running to set it to false.
+    #This causes both threads (drone 1 and drone 2) to finish their execution and therefore the code ends
     global liderAunCorreFlag
     liderAunCorreFlag = False
 
-############SECCIÓN DE CALLBACKS PARA LOS DRONES ##################################
+############CALLBACKS SECTION FOR DRONES##################################
+###Postition Callback####
 def pos_angCallback(timestamp, data, logconf):
     
     global FINAL_ARRAY
@@ -314,7 +306,7 @@ def pos_angCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
    
-
+###Speed Callback####
 def velCallback(timestamp, data, logconf):
 
     global FINAL_ARRAY
@@ -331,6 +323,7 @@ def velCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
+###Quaternion Callback####
 def quaternionCallback(timestamp, data, logconf):
 
     global FINAL_ARRAY
@@ -339,6 +332,7 @@ def quaternionCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
+##Angles Rate Callback####
 def anglesRatesCallback(timestamp, data, logconf):
 
     global FINAL_ARRAY
@@ -347,8 +341,8 @@ def anglesRatesCallback(timestamp, data, logconf):
 
     FINAL_ARRAY.append(dic_temp)
 
-#############drone 2 callbacks###################
-
+#############Drone 2 callbacks###################
+###Postition Callback####
 def pos_angCallback2(timestamp, data, logconf):
 
     global FINAL_ARRAY2
@@ -366,7 +360,7 @@ def pos_angCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
    
-
+###Speed Callback####
 def velCallback2(timestamp, data, logconf):
 
     global FINAL_ARRAY2
@@ -383,6 +377,7 @@ def velCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
 
+###Quaternion Callback####
 def quaternionCallback2(timestamp, data, logconf):
 
     global FINAL_ARRAY2
@@ -390,7 +385,8 @@ def quaternionCallback2(timestamp, data, logconf):
     dic_temp.update({"time": timestamp})
 
     FINAL_ARRAY2.append(dic_temp)
-
+    
+##Angles Rate Callback####
 def anglesRatesCallback2(timestamp, data, logconf):
 
     global FINAL_ARRAY2
@@ -399,9 +395,9 @@ def anglesRatesCallback2(timestamp, data, logconf):
 
     FINAL_ARRAY2.append(dic_temp)
 
-############# FIN SECCIÓN DE CALLBACKS PARA LOS DRONES##############################
+#############END OF CALLBACKS SECTION FOR DRONES##############################
 
-# Función para estimar la posicion del dron en cuestión
+# Function to estimate the position of the drone in question
 def wait_for_position_estimator(scf):
     print('Waiting for estimator to find position...')
 
@@ -442,7 +438,7 @@ def wait_for_position_estimator(scf):
                     max_z - min_z) < threshold:
                 break
 
-#función para indicar la posicion inical del dron y se estimen las posiciones de mejor manera
+#Function to indicate the initial position of the drone and estimate the positions in a better way
 def set_initial_position(scf, x, y, z, yaw_deg):
     scf.cf.param.set_value('kalman.initialX', x)
     scf.cf.param.set_value('kalman.initialY', y)
@@ -451,7 +447,7 @@ def set_initial_position(scf, x, y, z, yaw_deg):
     yaw_radians = math.radians(yaw_deg)
     scf.cf.param.set_value('kalman.initialYaw', yaw_radians)
 
-#funcion para resetear el estimador de la posicion del dron en cuestion
+#Function to reset the position estimator of the drone in question
 def reset_estimator(scf):
     cf = scf.cf
     cf.param.set_value('kalman.resetEstimation', '1')
@@ -460,31 +456,30 @@ def reset_estimator(scf):
 
     wait_for_position_estimator(cf)
 
-#funcion que será anclada al HILO 1 para el dron 1, control por velocidades con campos potenciales.
+#Function that will be anchored to THREAD 1 for drone 1, speed control with potential fields.
 def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel, logconf_quat, logconf_angles_rates):
 
-    #instancia de control
     cf = scf.cf
 
-    #se añaden todas las configuraciones de los logs creadas para el dron 1
+    #All log configurations created for drone 1 are added
     cf.log.add_config(logconf_pos_ang)
     cf.log.add_config(logconf_vel)
     cf.log.add_config(logconf_quat)
     cf.log.add_config(logconf_angles_rates)
 
-    #se anclan las funciones que serviran como callbacks para el dron 1
+    #The functions that will serve as callbacks for drone 1 are anchored
     logconf_pos_ang.data_received_cb.add_callback(pos_angCallback)
     logconf_vel.data_received_cb.add_callback(velCallback)
     logconf_quat.data_received_cb.add_callback(quaternionCallback)
     logconf_angles_rates.data_received_cb.add_callback(anglesRatesCallback)
 
-    #se inica los logs y recopilacion de datos para el dron 1
+    #Logs and data collection for drone 1 are started
     logconf_pos_ang.start()
     logconf_vel.start()
     logconf_quat.start()
     logconf_angles_rates.start()
 
-    #Se toman las variables de posicion y velocidad del dron 1 
+    #The position and speed variables of drone 1 are taken.
     global X1
     global Y1
     global Z1
@@ -492,12 +487,12 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
     global VY1
     global VZ1
 
-    #Se toman las posiciones del dron vecino, en este caos el 2
+    #The position and speed variables of its neighbor in this case drone 2.
     global X2
     global Y2
 
 
-    #constantes de control de velocidad para dron 1
+    #Speed control constants for drone 1
     kpx = 1.0
     kdx = 0.16
 
@@ -507,27 +502,23 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
     kpz = 0.5 
     kdz = 0.03 
 
-    #se toman los puntos deseados para el dron 1 calculados en la funcion del lider virtual (se actualizan constantemente)
+    #The desired points are taken for drone 1 calculated in the virtual leader function (they are constantly updated)
     global puntoDeseado_x_dron1
     global puntoDeseado_y_dron1
     global puntoDeseado_z_dron1
-    #se toma la bandera para saber cuando el lider haya terminando y terminar con el hilo
+    #The flag is taken to know when the leader has finished and to end the thread
     global liderAunCorreFlag
 
-    #se asigan estas posiciones a los puntos deseados para el algoritmo de control
+    #These positions are assigned to the desired points for the control algorithm.
     x_deseado = puntoDeseado_x_dron1
     y_deseado = puntoDeseado_y_dron1
     z_deseado = puntoDeseado_z_dron1
+    
+    error_tolerado = 0.12 #Tolerated error for speed control algorithm
+    contador = 1 #Counter to know the iteration in which we are going (it does not affect the control in any way, it can be removed) 
+    saturacion_error = 0.5 # Maximum saturation allowed for the resulting velocities calculated in X, Y, Z
 
-    #error tolerado para algoritmod e control por velocidad
-    error_tolerado = 0.12
-    #contador para saber la iteracion en la que vamos(no afecta en nada al control se puede quitar) 
-    contador = 1
-
-    #saturacion máxima permitida para las velocidades resultantes calculades en X, Y, Z
-    saturacion_error = 0.5
-
-    ##ganancias para los campos potenciales y distancia de seguridad
+    #Gains for potential fields and safety distance
     kp_potencial = 1.0
     kt_potencial = 70 
     kr_potencial = 1   
@@ -537,55 +528,55 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
 
     print("Iteracion: " + str(contador))
 
-    #ciclo while principal para saber cuando terminar el codigo
+    #Main while loop to know when to end the code
     while liderAunCorreFlag:
 
-        #se toman nuevamente los puntos deseados en los tres ejes
+        #The desired points are taken again on the three axes
         x_deseado = puntoDeseado_x_dron1
         y_deseado = puntoDeseado_y_dron1
         z_deseado = puntoDeseado_z_dron1
 
-        #se estima el error
+        #*Estimated error
         error_x = abs(X1 - x_deseado)
         error_y = abs(Y1 - y_deseado)
         error_z = abs(Z1 - z_deseado)
 
-        #ciclo while para algoritmo de control por velocidades mediante error en posicion
+        #While cycle for speed control algorithm using position error
         while ( (error_x > error_tolerado) or (error_y > error_tolerado) or (error_z > error_tolerado) ):
                 
-            #calculo para controlar por velocidad a los drones
+            #Calculation to control drones by speed
             vx_send = -kpx*(X1 - x_deseado) - kdx*(VX1)
             vy_send = -kpy*(Y1 - y_deseado) - kdy*(VY1)
             vz_send = -kpz*(Z1 - z_deseado) - kdz*(VZ1)
 
 
-            ##########CAMPOS POTENCIALES######################################################
+            ###################################POTENTIAL FIELDS######################################################
 
-            #se calculan los vectores necesarios para los calculos de campos potenciales
+            #The vectors necessary for the calculations of potential fields are calculated
             punto_deseado_dron1 = np.array([[x_deseado],[y_deseado]])
             punto_actual_dron1 = np.array([[X1],[Y1]])
             punto_vecino = np.array([[X2],[Y2]])
             norma_pv_pa = np.linalg.norm(np.subtract(punto_vecino, punto_actual_dron1))
             
-            #se divide la formula en tres secciones
+            #The formula is divided into three sections
             vel_campos_potenciales_parte_izq = -kp_potencial*(np.subtract(punto_actual_dron1, punto_deseado_dron1))
             vel_campos_potenciales_parte_der = -(np.subtract(punto_vecino, punto_actual_dron1) / norma_pv_pa)
             coeficienteDeControl_parte_der = (-0.5*np.tanh(kt_potencial*(norma_pv_pa - distancia_seguridad)) + 0.5) * (kr_potencial / norma_pv_pa)
 
-            #se juntan las tres secciones para obtener el vector con las velocidades resultantes
+            #The three sections are put together to obtain the vector with the resulting velocities
             velocidades_resultantes_campos_potenciales = vel_campos_potenciales_parte_izq + vel_campos_potenciales_parte_der * coeficienteDeControl_parte_der
 
-            #se obtienen los valores resultantes de los campos potenciales para los ejes X , Y
+            #The resulting values ​​of the potential fields for the X, Y axes are obtained
             vx_campo_potencial = velocidades_resultantes_campos_potenciales[0,0]
             vy_campo_potencial = velocidades_resultantes_campos_potenciales[1,0]
 
-            #a la velocidad que se había calculado previamente se le suma lo calculado en los campos potenciales
+            #The speed that had been previously calculated is added to what was calculated in the potential fields
             vx_send = vx_send + vx_campo_potencial
             vy_send = vy_send + vy_campo_potencial
 
             ###################################################################################
 
-            #SATURACIONES de las velocidades##############################################################
+            #mSATURATIONS of speeds##############################################################
 
             if(vx_send > saturacion_error):
                 vx_send = saturacion_error
@@ -602,18 +593,18 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
             elif(vz_send < -saturacion_error):
                 vz_send = -saturacion_error
             
-            ########### FIN SATURACIONES ##########################################################
+            ###########END SATURATIONS of speeds#########################################################
 
-            #Se mandan las velocidades calculadas 
+            #Calculated speeds are sent
             cf.commander.send_velocity_world_setpoint(vx_send, vy_send, vz_send, 0.0) #vx, vy, vz, yawRate
             time.sleep(0.1)
 
-            #se calcula el error
+            #error calculations
             error_x = abs(X1 - x_deseado)
             error_y = abs(Y1 - y_deseado)
             error_z = abs(Z1 - z_deseado)
 
-            #se vuelve a obtener el siguiente punto deseado
+            #The next desired point is obtained again
             x_deseado = puntoDeseado_x_dron1
             y_deseado = puntoDeseado_y_dron1
             z_deseado = puntoDeseado_z_dron1
@@ -622,27 +613,27 @@ def run_sequence(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel,
     contador+=1
 
 
-    #Se terminan los logs
+    #End of the logs
     logconf_pos_ang.stop()
     logconf_vel.stop()
     logconf_quat.stop()
     logconf_angles_rates.stop()
 
-    #se detienen los motores
+    #Motors stop
     cf.commander.send_stop_setpoint()
     # Make sure that the last packet leaves before the link is closed
     # since the message queue is not flushed before closing
     time.sleep(0.1)
 
-    #se genera el excel con los datos recopilados del dron
+    #Excel is generated with the data collected from the drone
     global FINAL_ARRAY
     df = pandas.DataFrame(FINAL_ARRAY)
     df.to_csv("./campos/06_06_23_Prueba029_3_LiderConCampos_drone1.csv")
 
 
-#funcion que será anclada al HILO 2 para el dron 2, control por velocidades con campos potenciales.
-#NOTA: esta funcion no esta comentada porque funciona exactamente igual que la funcipon del dron 1, solo cambia
-# que se toman las posiciones, velocidades etc... del dron 2, pero funcionan igual.
+#Function that will be anchored to THREAD 2 for drone 2, speed control with potential fields.
+#NOTE: this function is not commented because it works exactly the same as the function of drone 1, it only changes
+#That the positions, speeds etc... of drone 2 are taken, but they work the same.
 def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel, logconf_quat, logconf_angles_rates):
     cf = scf.cf
 
@@ -691,7 +682,7 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
     error_tolerado = 0.12
     contador = 1
 
-    ##ganancias campos potenciales
+    ##Gains potential fields
     kp_potencial = 1.0
     kt_potencial = 70 
     kr_potencial = 1   
@@ -725,7 +716,7 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
             vy_send = -kpy*(Y2 - y_deseado) - kdy*(VY2)
             vz_send = -kpz*(Z2 - z_deseado) - kdz*(VZ2)
 
-            ##########CAMPOS POTENCIALES######################################################
+            ##########POTENTIAL FIELDS######################################################
 
 
             punto_deseado_dron1 = np.array([[x_deseado],[y_deseado]])
@@ -748,7 +739,7 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
 
             ###################################################################################
 
-            #SATURACIONES
+            #SATURATIONS
 
             if(vx_send > saturacion_error):
                 vx_send = saturacion_error
@@ -765,7 +756,7 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
             elif(vz_send < -saturacion_error):
                 vz_send = -saturacion_error
         
-            #se mandan las calculadas
+            #Calculated speeds are sent
             cf.commander.send_velocity_world_setpoint(vx_send, vy_send, vz_send, 0.0) #vx, vy, vz, yawRate
             time.sleep(0.1)
 
@@ -800,21 +791,21 @@ def run_sequence2(scf, base_x, base_y, base_z, yaw, logconf_pos_ang, logconf_vel
 if __name__ == '__main__':
     cflib.crtp.init_drivers()
 
-    #posiciones del dron 1 iniciales
+    #Initial Drone 1 Positions
     initial_x = puntoDeseado_x_dron1 
     initial_y = puntoDeseado_y_dron1 
     initial_z = 0.0
     initial_yaw = 90  # en grados
 
-    #posiciones del dron 2
+    #Initial Drone 2 Positions
     initial_x2 = puntoDeseado_x_dron2
     initial_y2 = puntoDeseado_y_dron2
     initial_z2 = 0.0
     initial_yaw2 = 90
     
 
-    #####CONFIGURACION DE LOS LOGS ####################################
-    #####variables de posicion y angulos########################################################
+    #####LOG CONFIGURATION ####################################
+    #####Position and angle variables########################################################
     lg_stab_pos_ang = LogConfig(name='Stabilizer1', period_in_ms=100)
 
     lg_stab_pos_ang.add_variable('stabilizer.roll', 'float')
@@ -824,7 +815,7 @@ if __name__ == '__main__':
     lg_stab_pos_ang.add_variable('stateEstimate.x', 'float')
     lg_stab_pos_ang.add_variable('stateEstimate.y', 'float')
     lg_stab_pos_ang.add_variable('stateEstimate.z', 'float')
-#############Velocidades en x,y,z#####################################################################
+#############Speeds in x,y,z#####################################################################
 
     lg_stab_vel = LogConfig(name='Stabilizer2', period_in_ms=100)
     
@@ -850,7 +841,7 @@ if __name__ == '__main__':
     lg_stab_angles_rates.add_variable('controller.r_yaw', 'float')
 
 ##############################################################################################
-####################Instancias para el dron 2##################################################
+####################Instances for drone 2##################################################
     lg_stab_pos_ang2 = LogConfig(name='Stabilizer5', period_in_ms=100)
 
     lg_stab_pos_ang2.add_variable('stabilizer.roll', 'float')
@@ -860,7 +851,7 @@ if __name__ == '__main__':
     lg_stab_pos_ang2.add_variable('stateEstimate.x', 'float')
     lg_stab_pos_ang2.add_variable('stateEstimate.y', 'float')
     lg_stab_pos_ang2.add_variable('stateEstimate.z', 'float')
-#############Velocidades en x,y,z#####################################################################
+#############Speeds in x,y,z#####################################################################
 
     lg_stab_vel2 = LogConfig(name='Stabilizer6', period_in_ms=100)
     
@@ -889,34 +880,35 @@ if __name__ == '__main__':
 
 ################################################################################################
 
-    #Conexion con los drones 
+    #Connection with drones 
     with SyncCrazyflie(uri, cf=Crazyflie(rw_cache='./cache')) as scf:
         with SyncCrazyflie(uri2, cf=Crazyflie(rw_cache='./cache')) as scf2:
 
         
-            #indicar posicion inicial de los drones y reiniciar estimadores
+            #Indicate initial position of the drones and restart drone estimators
             set_initial_position(scf, initial_x, initial_y, initial_z, initial_yaw)
             reset_estimator(scf)
 
             set_initial_position(scf2, initial_x2, initial_y2, initial_z2, initial_yaw2)
             reset_estimator(scf2)
 
-            #se crea el hilo del dron 1
+            #Drone 1 thread is created
             hilo_dron1 = threading.Thread(target=run_sequence, args=(scf, initial_x, initial_y, initial_z, initial_yaw,
                                                                     lg_stab_pos_ang, lg_stab_vel, lg_stab_quat, lg_stab_angles_rates))
 
-            #se crea el hilo del dron 2
+            #Drone 2 thread is created
             hilo_dron2 = threading.Thread(target=run_sequence2, args=(scf2, initial_x2, initial_y2, initial_z2, initial_yaw2,
                                                                     lg_stab_pos_ang2, lg_stab_vel2, lg_stab_quat2, lg_stab_angles_rates2))
 
-            #se ejecutan ambos hilos, inician vuelo ambos drones
+            #Both threads are executed, both drones start flying
             hilo_dron1.start()
             hilo_dron2.start()
 
-            #Inicia funcion del lider virtual SIN HILO para que este en el hilo principal #########################################
+            #Start function of the virtual leader WITHOUT THREAD so that it is in the main thread#########################################
             liderVirtual()
             ##########################################################################
 
-            #se espera a que se terminen los hilos para terminar el codigo
+            
+            #Wait for the threads to finish to finish the code
             hilo_dron1.join()
             hilo_dron2.join()
