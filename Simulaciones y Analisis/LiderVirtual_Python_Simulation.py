@@ -7,14 +7,14 @@
 # Comentado por: Carlos Flores
 
 ##################################################################################################################################################
-
+#Import libraries
 import matplotlib.pyplot as plt
 import numpy as np
 import math
 import threading
 import time
 
-#Inicializamos las posiciones de los drones como deseada (se van a actualizar)
+#We initialize the drone positions as desired (they will be updated)
 puntoDeseado_x_dron1 = 0
 puntoDeseado_y_dron1 = 0
 
@@ -68,24 +68,24 @@ def liderVirtual():
 
     #------------------------------------------------------------------------
 
-    #Iniciar variables para el lider virtual
+    #Start variables for the virtual leader
 
-    #posicion lider virtual
+    #Position of the virtual leader
     x_lider = 0.5
     y_lider = 1.72
 
-    #Variables de cinemática carro transformadas a drones y tiempo
+    #Car kinematics variables transformed to drones and time
     l = 0.2
     t = 0
     Tf = 0.1
     dt = 0.01
 
-    #Angulo inicial del lider y constantes de control
+    #Initial angle of the leader and control constants
     theta =  0.7854
     kt = 10 #estaba en 10
     kr = 100
 
-    #distancias conocidas para la referencia geometrica
+    #Known distances for the geometric reference
     dc = 0.5
 
 
@@ -103,7 +103,7 @@ def liderVirtual():
 
     global flagEndDataThread
 
-    # Iniciamos el loop para actualizar la gráfica
+    # We start the loop to update the graph
     for i in range(len(x1)):
 
         xd = x1[i]
@@ -129,7 +129,7 @@ def liderVirtual():
         ye = y_lider - yd 
 
         
-        #Condicional para trabajr mientra se este dentro del treshold
+        #Conditional to work while within treshold
         while (abs(xe)>0.05 or abs(ye)>0.05 ):
 
             xe = x_lider - xd
@@ -141,7 +141,7 @@ def liderVirtual():
             v = kt*math.sqrt(xe**2 + ye**2)
             omega = -kr*theta_e
 
-            #saturación de la velocidad para evitar entradas extravagantes
+            #Speed ​​saturation to avoid extravagant inputs
             if(v>1):
                 v = 1
             if(omega>(np.pi/2)):
@@ -155,19 +155,19 @@ def liderVirtual():
             v = (vr + vl)/2
             omega = (vr - vl)/l
 
-            #Velocidades 
+            #Speeds 
             xp = v*math.cos(theta)
             yp = v*math.sin(theta)
             thetap = omega
 
-            #Integrar para obtener posicion del lider
+            #Integrate to obtain leader position
             x_lider = x_lider + xp*dt
             y_lider = y_lider + yp*dt 
             theta = theta + thetap*dt
 
             t = t + dt
             #---------------------------------------------------------
-            #GRAFICAR, BLOQUE
+            #GRAPH, BLOCK
 
             # Append the new x and y values
             x2.append(x_lider)
@@ -177,7 +177,7 @@ def liderVirtual():
             line2.set_xdata(y2)
             line2.set_ydata(x2)
 
-            #Actualizar dato nuevo en gráfica RECUERDA SE PONEN AL REVEZ PORQUE EN LA VIDA REAL ES AL REVEZ
+            #Update new data in graph REMEMBER THEY ARE PLACED REVERSE BECAUSE IN REAL LIFE IT IS REVERSE DOWN
             
             punto_deseado1.set_xdata([p1y])
             punto_deseado1.set_ydata([p1x])
@@ -191,10 +191,10 @@ def liderVirtual():
             # Pause to allow the plot to update
             plt.pause(0.01) #vemos dudoso si dejarlo...
             #---------------------------------------------------------
-            #GRAFICAR, BLOQUE
+            #GRAPH, BLOCK
 
 
-
+####Function to print the desired coordinates
 def imprimiendoDatosDeseados():
     global puntoDeseado_x_dron1
     global puntoDeseado_y_dron1
@@ -209,15 +209,29 @@ def imprimiendoDatosDeseados():
         time.sleep(0.1)
     
 
-def threading_init():
-   # hilo_liderVirtual = threading.Thread(target=liderVirtual)
-    hilo_data = threading.Thread(target=liderVirtual)
+    def threading_init():
+        # Initialize threading for concurrent execution
+    
+        # Uncomment the following line if there is another thread for liderVirtual
+        # hilo_liderVirtual = threading.Thread(target=liderVirtual)
+    
+        # Create a thread for liderVirtual
+        hilo_data = threading.Thread(target=liderVirtual)
+    
+        # Uncomment the following lines if there are multiple threads
+        # Start the thread for liderVirtual
+        # hilo_liderVirtual.start()
+    
+        # Start the thread for liderVirtual
+        hilo_data.start()
+    
+        # Uncomment the following lines if there are multiple threads
+        # Wait for the thread for liderVirtual to complete
+        # hilo_liderVirtual.join()
+    
+        # Wait for the thread for liderVirtual to complete
+        hilo_data.join()
 
-   # hilo_liderVirtual.start()
-    hilo_data.start()
-
-    #hilo_liderVirtual.join()
-    hilo_data.join()
     
 
 #threading_init()
