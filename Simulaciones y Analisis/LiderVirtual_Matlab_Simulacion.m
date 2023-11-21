@@ -9,54 +9,52 @@
 %Nota: Para un dron se elimina uno de los lados (con la finalidad de
 %simplificar la lógica de vuelo)
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+clear all %Clear all variables from the workspace
+close all %Close all open figure windows
+clc %Clear the command window
 
-clear all
-close all
-clc
 
-%posicion lider virtual
+%Position of the virtual leader
 x = 0;
 y = 0;
 
-%posicion dron 1
+%Position of Drone 1
 x_drone1 = -1;
 y_drone1 = -1;
 
-%posicion dron 2
+%Position of Drone 2
 x_drone2 = 0;
 y_drone2 = -1;
 
 
-%constantes de control para drones
-kp_drone = 5;
+kp_drone = 5; %Control constants for drones
 
-l = 0.2; %Distancia entre drones
+l = 0.2; %Distance between drones
 
-%Tiempos y relacionados
+%Times and related
 t = 0;
 Tf = 0.1;
 dt = 0.01;
 
 
-theta =  0.7854; %Ángulo de inicio 
+theta =  0.7854; %Initial angle 
 
 
 kt = 10;
 kr = 100;
 
 
-xd = (0:0.1:4); %vector de puntos deseados en x
-yd = (sin(xd));% vector de puntos deseados en y usando función seno
+xd = (0:0.1:4); % Vector of desired points in x
+yd = (sin(xd));% Vector of desired points in and using sine function
 [filas, columnas] = size(xd); 
 
 figure(1);
-plot(xd,yd); %Gráfica de la función seno a seguir
+plot(xd,yd); %Graph of the sine function to follow
 hold on
 
-%distancias conocidas para la referencia geometrica
-dc = 0.5;
+dc = 0.5; %Known distances for the geometric reference
 
-for i = 1:columnas %ciclo for para recorrer cada punto deseado
+for i = 1:columnas %For loop to traverse each desired point
 
 
    xdd = xd(i);
@@ -74,7 +72,7 @@ for i = 1:columnas %ciclo for para recorrer cada punto deseado
 
    t=0;
 
-while (t<Tf) %ciclo while para llegar a cada punto deseado en la funcion seno
+while (t<Tf) %While loop to reach each desired point in the sine function
 
     xe = x - xdd;
     ye = y - ydd;
@@ -105,23 +103,23 @@ while (t<Tf) %ciclo while para llegar a cada punto deseado en la funcion seno
     yp = v*sin(theta);
     thetap = omega;
 
-    %Resta para obtener velocidades del dron1
+    %Subtract to get drone 1 speeds
     vx_drone1 = (p1x - x_drone1)*kp_drone;
     vy_drone1 = (p1y - y_drone1)*kp_drone;
 
-    %Resta para obtener velocidades del dron2
+    %Subtract to get drone 2 speeds 
     vx_drone2 = (p2x - x_drone2)*kp_drone;
     vy_drone2 = (p2y - y_drone2)*kp_drone;
 
-    %Integrar para obtener posicion del lider
+    %Integrate to obtain leader position
     x = x + xp*dt;
     y = y + yp*dt ;
     
-    %Integrar para obtener posicion del dron 1
+    %Integrate to obtain position of drone 1
     x_drone1 = x_drone1 + vx_drone1*dt;
     y_drone1 = y_drone1 + vy_drone1*dt;
 
-    %Integrar para obtener posicion del dron 2
+    %Integrate to obtain position of drone 2
     x_drone2 = x_drone2 + vx_drone2*dt;
     y_drone2 = y_drone2 + vy_drone2*dt;
     
